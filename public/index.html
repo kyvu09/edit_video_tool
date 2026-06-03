@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Creator - Edit Video Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 Edit Video Tool</h1>
+            <p>Create videos from images, audio, and scripts</p>
+        </header>
+
+        <main>
+            <form id="uploadForm" class="upload-form">
+                <div class="form-section">
+                    <label for="audio">
+                        <span class="icon">🎤</span>
+                        Audio File (MP3)
+                        <input type="file" id="audio" name="audio" accept=".mp3" required>
+                    </label>
+                </div>
+
+                <div class="form-section">
+                    <label for="script">
+                        <span class="icon">📝</span>
+                        Script File (TXT)
+                        <input type="file" id="script" name="script" accept=".txt" required>
+                    </label>
+                </div>
+
+                <div class="form-section">
+                    <div class="image-uploader-container">
+                        <div class="upload-trigger" id="uploadTrigger">
+                            <span class="icon">🖼️</span>
+                            <span>Add Scene Images</span>
+                            <p class="upload-hint">Click to add scene images sequentially</p>
+                            <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
+                        </div>
+                        <div id="imagePreview" class="image-preview"></div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">Create Video</button>
+            </form>
+
+            <div id="progress" class="progress-section" style="display: none;">
+                <h2>⏳ Creating Your Video</h2>
+                <p class="progress-subtitle">Please wait, we are assembling your story...</p>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                </div>
+                <p id="progressText">Initializing...</p>
+                <ul id="progressSteps" class="progress-steps">
+                    <li id="step-whisper" class="step">
+                        <div class="step-status"><span class="step-bullet"></span></div>
+                        <div class="step-content">
+                            <span class="step-title">Extract Audio Timestamps</span>
+                            <span class="step-desc">Analyzing voice timeline with Whisper AI</span>
+                        </div>
+                    </li>
+                    <li id="step-parse" class="step">
+                        <div class="step-status"><span class="step-bullet"></span></div>
+                        <div class="step-content">
+                            <span class="step-title">Parse Script &amp; Scenes</span>
+                            <span class="step-desc">Analyzing text file structure and timestamps</span>
+                        </div>
+                    </li>
+                    <li id="step-timeline" class="step">
+                        <div class="step-status"><span class="step-bullet"></span></div>
+                        <div class="step-content">
+                            <span class="step-title">Generate Matching Timeline</span>
+                            <span class="step-desc">Matching script sections to audio timings</span>
+                        </div>
+                    </li>
+                    <li id="step-subtitle" class="step">
+                        <div class="step-status"><span class="step-bullet"></span></div>
+                        <div class="step-content">
+                            <span class="step-title">Create Subtitle Track</span>
+                            <span class="step-desc">Compiling subtitles into SRT file format</span>
+                        </div>
+                    </li>
+                    <li id="step-ffmpeg" class="step">
+                        <div class="step-status"><span class="step-bullet"></span></div>
+                        <div class="step-content">
+                            <span class="step-title">Render Video with FFmpeg</span>
+                            <span class="step-desc">Composing scenes, merging audio, and burning subtitles</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div id="success" class="success-section" style="display: none;">
+                <h2>✅ Video Created Successfully!</h2>
+                <p>Preview your generated video below before download:</p>
+                <div class="video-preview-container">
+                    <video id="videoPreviewPlayer" controls>
+                        Your browser does not support the HTML5 video tag.
+                    </video>
+                </div>
+                <div class="success-actions">
+                    <a id="downloadLink" href="#" class="btn-download">💾 Download Video</a>
+                    <button onclick="location.reload()" class="btn-secondary-action">🔄 Create Another</button>
+                </div>
+            </div>
+
+            <div id="error" class="error-section" style="display: none;">
+                <h2>❌ Error</h2>
+                <p id="errorMessage"></p>
+                <button onclick="location.reload()" class="btn-retry">Try Again</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by OpenAI Whisper & FFmpeg</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
