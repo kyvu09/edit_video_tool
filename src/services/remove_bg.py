@@ -113,29 +113,41 @@ def composite(fg_nobg, bg_path, aspect_ratio="16:9"):
     """Resize bg to canvas size, scale fg proportionally, centre and paste."""
     if aspect_ratio == "9:16":
         canvas_w, canvas_h = 1080, 1920
-        target_h = int(canvas_h * 0.6)  # Scale to 60% of height in portrait
-    else:
-        canvas_w, canvas_h = 1920, 1080
-        target_h = int(canvas_h * 0.8)  # Scale to 80% of height in landscape
 
-    bg_img = Image.open(bg_path).resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
+    target_h = int(canvas_h * 0.55)
+
+    bg_img = Image.open(bg_path).resize(
+        (canvas_w, canvas_h),
+        Image.Resampling.LANCZOS
+    )
 
     fg_w, fg_h = fg_nobg.size
-    scale      = target_h / fg_h
-    fg_resized = fg_nobg.resize((int(fg_w * scale), target_h), Image.Resampling.LANCZOS)
+    scale = target_h / fg_h
 
-    # Ensure it's not wider than 90% of canvas width
-    if fg_resized.width > canvas_w * 0.9:
-        scale_w = (canvas_w * 0.9) / fg_resized.width
-        fg_resized = fg_resized.resize((int(fg_resized.width * scale_w), int(fg_resized.height * scale_w)), Image.Resampling.LANCZOS)
+    fg_resized = fg_nobg.resize(
+        (int(fg_w * scale), target_h),
+        Image.Resampling.LANCZOS
+    )
+
+    if fg_resized.width > canvas_w * 0.85:
+        scale_w = (canvas_w * 0.85) / fg_resized.width
+        fg_resized = fg_resized.resize(
+            (
+                int(fg_resized.width * scale_w),
+                int(fg_resized.height * scale_w)
+            ),
+            Image.Resampling.LANCZOS
+        )
 
     paste_x = (canvas_w - fg_resized.width) // 2
-    
-    if aspect_ratio == "9:16":
-        # Raise it slightly higher to avoid social media UI overlays
-        paste_y = canvas_h - fg_resized.height - 120
-    else:
-        paste_y = canvas_h - fg_resized.height - 50
+
+    SAFE_ZONE_BOTTOM = 350
+
+    paste_y = (
+        canvas_h
+        - fg_resized.height
+        - SAFE_ZONE_BOTTOM
+    )
 
     bg_img.paste(fg_resized, (paste_x, paste_y), fg_resized)
     return bg_img
