@@ -14,40 +14,135 @@
         <header>
             <h1>🎬 Edit Video Tool</h1>
             <p>Create videos from images, audio, and scripts</p>
+            <div style="margin-top: 0.75rem; margin-bottom: 0.5rem;">
+                <a href="/debug.html" style="color: #a5b4fc; text-decoration: none; font-weight: 700; border: 1px solid rgba(255,255,255,0.15); padding: 0.4rem 0.8rem; border-radius: 8px; background: rgba(255,255,255,0.03); transition: all 0.3s; font-size: 0.9rem;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">🛠️ Tách Nền Debugger</a>
+            </div>
+            <div class="api-debug-container">
+                <div class="api-debug-widget" id="apiDebugWidget">
+                    <span class="api-status-dot checking" id="apiStatusDot"></span>
+                    <span class="api-status-text" id="apiStatusText">Checking OpenAI API...</span>
+                    <button type="button" class="btn-check-api" id="btnCheckApi">🔄 Check</button>
+                </div>
+                <div class="api-details-tooltip" id="apiDetailsTooltip">Loading status information...</div>
+            </div>
         </header>
 
         <main>
-            <form id="uploadForm" class="upload-form">
-                <div class="form-section">
-                    <label for="audio">
-                        <span class="icon">🎤</span>
-                        Audio File (MP3)
-                        <input type="file" id="audio" name="audio" accept=".mp3" required>
-                    </label>
-                </div>
+            <!-- Tab Controls -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="create-video-tab">🎬 Tạo Video</button>
+                <button class="tab-btn" data-tab="script-assistant-tab">✨ Trợ Lý Kịch Bản AI</button>
+            </div>
 
-                <div class="form-section">
-                    <label for="script">
-                        <span class="icon">📝</span>
-                        Script File (TXT)
-                        <input type="file" id="script" name="script" accept=".txt" required>
-                    </label>
-                </div>
+            <!-- TAB 1: CREATE VIDEO -->
+            <div id="create-video-tab" class="tab-content active">
+                <form id="uploadForm" class="upload-form">
+                    <div class="form-section">
+                        <label for="audio">
+                            <span class="icon">🎤</span>
+                            Audio File (MP3)
+                            <input type="file" id="audio" name="audio" accept=".mp3" required>
+                        </label>
+                    </div>
 
-                <div class="form-section">
-                    <div class="image-uploader-container">
-                        <div class="upload-trigger" id="uploadTrigger">
+                    <div class="form-section">
+                        <label for="script">
+                            <span class="icon">📝</span>
+                            Script File (TXT)
+                            <input type="file" id="script" name="script" accept=".txt" required>
+                        </label>
+                    </div>
+
+                    <div class="form-section">
+                        <label for="backgroundImage">
                             <span class="icon">🖼️</span>
-                            <span>Add Scene Images</span>
-                            <p class="upload-hint">Click to add scene images sequentially</p>
-                            <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
+                            Background Image (Optional - Auto-Overlay Foreground)
+                            <input type="file" id="backgroundImage" name="backgroundImage" accept=".png,.jpg,.jpeg">
+                        </label>
+                    </div>
+
+                    <div class="form-section" id="bgModeSection" style="display: none;">
+                        <label for="backgroundMode">
+                            <span class="icon">⚙️</span>
+                            Background Removal Mode (Chế độ tách nền)
+                            <select id="backgroundMode" name="backgroundMode">
+                                <option value="whitekey" selected>Tranh vẽ / Sketch (Tách nền trắng - Giữ nét vẽ)</option>
+                                <option value="rembg">Tự động AI (Rembg - Tốt cho ảnh chụp)</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <!-- Aspect Ratio Selector -->
+                    <div class="form-section">
+                        <label for="aspectRatio">
+                            <span class="icon">📐</span>
+                            Video Aspect Ratio (Tỷ lệ khung hình)
+                            <select id="aspectRatio" name="aspectRatio">
+                                <option value="16:9" selected>Ngang 16:9 (YouTube, Máy tính)</option>
+                                <option value="9:16">Dọc 9:16 (TikTok, Shorts, Reels)</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="image-uploader-container">
+                            <div class="upload-trigger" id="uploadTrigger">
+                                <span class="icon">🖼️</span>
+                                <span>Add Scene Images</span>
+                                <p class="upload-hint">Click to add scene images sequentially</p>
+                                <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
+                            </div>
+                            <div id="imagePreview" class="image-preview"></div>
                         </div>
-                        <div id="imagePreview" class="image-preview"></div>
+                    </div>
+
+                    <button type="submit" class="btn-submit">Create Video</button>
+                </form>
+            </div>
+
+            <!-- TAB 2: AI SCRIPT ASSISTANT -->
+            <div id="script-assistant-tab" class="tab-content">
+                <div class="ai-assistant-container">
+                    <div class="form-section">
+                        <label for="rawScriptText" style="cursor: default;">
+                            <span class="icon">✍️</span>
+                            <span>Dán kịch bản thô của bạn</span>
+                            <p class="upload-hint">Dán ý tưởng, văn bản tự do. AI sẽ tự động phân nhỏ thành từng Scene và viết prompt vẽ hình</p>
+                        </label>
+                        <textarea id="rawScriptText" placeholder="Ví dụ: Người thành công không phải là người thông minh nhất, mà là người nỗ lực nhiều nhất. Hãy luôn kiên trì vượt qua khó khăn nhé..." rows="6" class="custom-textarea"></textarea>
+                    </div>
+                    <button id="btnGenerateScenes" type="button" class="btn-submit" style="width: 100%; margin-top: 15px;">✨ Tạo Phân Cảnh Bằng Gemini AI</button>
+
+                    <div id="aiProgress" class="ai-progress" style="display: none;">
+                        <div class="spinner" style="margin: 0 auto 10px auto; width: 24px; height: 24px;"></div>
+                        <p id="aiProgressText">Đang phân tích kịch bản thô...</p>
+                    </div>
+
+                    <div id="aiResults" class="ai-results" style="display: none; margin-top: 24px;">
+                        <div class="form-section" style="margin-top: 20px;">
+                            <h3>🖼️ Phân Cảnh & Prompt Hình Ảnh (WhiskLab)</h3>
+                            <p class="upload-hint" style="margin-bottom: 8px;">Sao chép danh sách này để tự vẽ các ảnh bằng AI</p>
+                            <div class="textarea-container">
+                                <textarea id="aiScenesOutput" readonly rows="8" class="custom-textarea readonly-textarea"></textarea>
+                                <button id="btnCopyScenes" type="button" class="btn-copy">📋 Sao chép</button>
+                            </div>
+                        </div>
+
+                        <div class="form-section" style="margin-top: 20px;">
+                            <h3>📝 Kịch Bản Đã Tách Phân Cảnh (Để tạo video)</h3>
+                            <p class="upload-hint" style="margin-bottom: 8px;">Lời thoại của video sau khi đã phân chia chuẩn</p>
+                            <div class="textarea-container">
+                                <textarea id="aiScriptOutput" readonly rows="6" class="custom-textarea readonly-textarea"></textarea>
+                                <button id="btnCopyScript" type="button" class="btn-copy">📋 Sao chép</button>
+                            </div>
+                            <div style="display: flex; gap: 12px; margin-top: 15px;">
+                                <button id="btnApplyScript" type="button" class="btn-secondary-action" style="flex: 1; padding: 12px 20px;">⚡ Tự động điền vào Form</button>
+                                <button id="btnDownloadScriptText" type="button" class="btn-secondary-action" style="flex: 1; padding: 12px 20px;">💾 Tải file .txt</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <button type="submit" class="btn-submit">Create Video</button>
-            </form>
+            </div>
 
             <div id="progress" class="progress-section" style="display: none;">
                 <h2>⏳ Creating Your Video</h2>
@@ -59,6 +154,13 @@
                 </div>
                 <p id="progressText">Initializing...</p>
                 <ul id="progressSteps" class="progress-steps">
+                    <li id="step-rembg" class="step">
+                        <div class="step-status"><span class="step-bullet"></span></div>
+                        <div class="step-content">
+                            <span class="step-title">Separate Foreground &amp; Overlay (Rembg)</span>
+                            <span class="step-desc">Extracting foreground and overlaying on background</span>
+                        </div>
+                    </li>
                     <li id="step-whisper" class="step">
                         <div class="step-status"><span class="step-bullet"></span></div>
                         <div class="step-content">

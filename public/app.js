@@ -72,6 +72,19 @@ function removeImage(index) {
     renderPreviews();
 }
 
+// Toggle Background removal mode dropdown based on background image selection
+const bgSelectorInput = document.getElementById('backgroundImage');
+const bgModeSection = document.getElementById('bgModeSection');
+if (bgSelectorInput && bgModeSection) {
+    bgSelectorInput.addEventListener('change', () => {
+        if (bgSelectorInput.files[0]) {
+            bgModeSection.style.display = 'block';
+        } else {
+            bgModeSection.style.display = 'none';
+        }
+    });
+}
+
 // Form submission
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -88,6 +101,16 @@ form.addEventListener('submit', async (e) => {
 
     formData.append('audio', audioFile);
     formData.append('script', scriptFile);
+    
+    const bgInput = document.getElementById('backgroundImage');
+    if (bgInput && bgInput.files[0]) {
+        formData.append('backgroundImage', bgInput.files[0]);
+        const bgMode = document.getElementById('backgroundMode').value;
+        formData.append('backgroundMode', bgMode);
+    }
+
+    const aspectRatio = document.getElementById('aspectRatio').value;
+    formData.append('aspectRatio', aspectRatio);
     
     selectedImages.forEach((imgObj) => {
         formData.append('images', imgObj.file);
@@ -123,7 +146,7 @@ form.addEventListener('submit', async (e) => {
 });
 
 function trackProgress(sessionId) {
-    const steps = ['step-whisper', 'step-parse', 'step-timeline', 'step-subtitle', 'step-ffmpeg'];
+    const steps = ['step-rembg', 'step-whisper', 'step-parse', 'step-timeline', 'step-subtitle', 'step-ffmpeg'];
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
     
@@ -212,3 +235,236 @@ function trackProgress(sessionId) {
         }
     }, 1000);
 }
+
+// --- OpenAI API Debug Tooling ---
+const apiStatusDot = document.getElementById('apiStatusDot');
+const apiStatusText = document.getElementById('apiStatusText');
+const apiDetailsTooltip = document.getElementById('apiDetailsTooltip');
+const btnCheckApi = document.getElementById('btnCheckApi');
+
+async function checkOpenAIApi() {
+    if (!apiStatusDot || !apiStatusText) return;
+    
+    // Set checking state
+    apiStatusDot.className = 'api-status-dot checking';
+    apiStatusText.textContent = 'Testing OpenAI API...';
+    apiDetailsTooltip.textContent = 'Sending request to verify connectivity and key validity...';
+    btnCheckApi.disabled = true;
+    
+    try {
+        const response = await fetch('/api/debug-openai');
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Reset classes
+        apiStatusDot.className = 'api-status-dot';
+        
+        // Apply status class and text
+        if (data.status === 'active') {
+            apiStatusDot.classList.add('active');
+            apiStatusText.textContent = data.message;
+            apiStatusText.style.color = '#10b981'; // Success emerald
+        } else if (data.status === 'placeholder') {
+            apiStatusDot.classList.add('placeholder');
+            apiStatusText.textContent = data.message;
+            apiStatusText.style.color = '#f59e0b'; // Amber yellow
+        } else {
+            apiStatusDot.classList.add('error');
+            apiStatusText.textContent = data.message;
+            apiStatusText.style.color = '#ef4444'; // Red
+        }
+        
+        // Populate tooltip with details
+        apiDetailsTooltip.innerHTML = `
+            <strong>Status Details:</strong><br>
+            ${data.details}<br><br>
+            <span style="font-size: 0.85em; opacity: 0.8;">Click this widget to refresh status anytime.</span>
+        `;
+        
+    } catch (error) {
+        apiStatusDot.className = 'api-status-dot error';
+        apiStatusText.textContent = 'API Offline / Error';
+        apiStatusText.style.color = '#ef4444';
+        apiDetailsTooltip.innerHTML = `
+            <strong>Verification Error:</strong><br>
+            ${error.message}<br><br>
+            Make sure your backend server is running and accessible.
+        `;
+    } finally {
+        btnCheckApi.disabled = false;
+    }
+}
+
+// Register click trigger for manual check
+if (btnCheckApi) {
+    btnCheckApi.addEventListener('click', (e) => {
+        e.stopPropagation();
+        checkOpenAIApi();
+    });
+}
+
+// Let users click the whole widget to refresh
+const apiDebugWidget = document.getElementById('apiDebugWidget');
+if (apiDebugWidget) {
+    apiDebugWidget.addEventListener('click', () => {
+        checkOpenAIApi();
+    });
+}
+
+// Run status verification on initialization
+document.addEventListener('DOMContentLoaded', () => {
+    checkOpenAIApi();
+    initTabs();
+    initAIAssistant();
+});
+checkOpenAIApi(); // Run immediately too in case DOM is already loaded
+
+
+// --- Tab Switcher Logic ---
+function initTabs() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.getAttribute('data-tab');
+
+            tabButtons.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            const targetEl = document.getElementById(targetTab);
+            if (targetEl) {
+                targetEl.classList.add('active');
+            }
+        });
+    });
+}
+
+// Helper to switch tab programmatically
+function switchTab(tabId) {
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+    if (btn) {
+        btn.click();
+    }
+}
+
+// --- AI Script Assistant Feature ---
+function initAIAssistant() {
+    const btnGenerate = document.getElementById('btnGenerateScenes');
+    const txtRawScript = document.getElementById('rawScriptText');
+    const aiProgress = document.getElementById('aiProgress');
+    const aiProgressText = document.getElementById('aiProgressText');
+    const aiResults = document.getElementById('aiResults');
+    const txtScenesOutput = document.getElementById('aiScenesOutput');
+    const txtScriptOutput = document.getElementById('aiScriptOutput');
+    
+    const btnCopyScenes = document.getElementById('btnCopyScenes');
+    const btnCopyScript = document.getElementById('btnCopyScript');
+    const btnApplyScript = document.getElementById('btnApplyScript');
+    const btnDownloadScript = document.getElementById('btnDownloadScriptText');
+
+    if (!btnGenerate) return;
+
+    btnGenerate.addEventListener('click', async () => {
+        const rawText = txtRawScript.value.trim();
+        if (!rawText) {
+            alert('Vui lòng nhập kịch bản thô của bạn trước.');
+            return;
+        }
+
+        // Show loading state
+        btnGenerate.disabled = true;
+        aiProgress.style.display = 'block';
+        aiResults.style.display = 'none';
+        aiProgressText.textContent = 'Đang phân tích kịch bản thô bằng Gemini AI...';
+
+        try {
+            const response = await fetch('/api/generate-scenes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rawScriptText: rawText })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(errText || 'Lỗi từ API Gemini');
+            }
+
+            const data = await response.json();
+
+            // Populate outputs
+            txtScenesOutput.value = data.scenesAndPrompts;
+            txtScriptOutput.value = data.separatedScript;
+
+            // Show results
+            aiProgress.style.display = 'none';
+            aiResults.style.display = 'block';
+        } catch (error) {
+            console.error('Gemini Assistant Error:', error);
+            alert('Không thể tạo phân cảnh: ' + error.message);
+            aiProgress.style.display = 'none';
+        } finally {
+            btnGenerate.disabled = false;
+        }
+    });
+
+    // Copy to clipboard helpers
+    btnCopyScenes.addEventListener('click', () => {
+        txtScenesOutput.select();
+        navigator.clipboard.writeText(txtScenesOutput.value);
+        const origText = btnCopyScenes.textContent;
+        btnCopyScenes.textContent = '✅ Đã chép!';
+        setTimeout(() => btnCopyScenes.textContent = origText, 2000);
+    });
+
+    btnCopyScript.addEventListener('click', () => {
+        txtScriptOutput.select();
+        navigator.clipboard.writeText(txtScriptOutput.value);
+        const origText = btnCopyScript.textContent;
+        btnCopyScript.textContent = '✅ Đã chép!';
+        setTimeout(() => btnCopyScript.textContent = origText, 2000);
+    });
+
+    // Download script.txt helper
+    btnDownloadScript.addEventListener('click', () => {
+        const text = txtScriptOutput.value;
+        if (!text) return;
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'script.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // Auto-fill form and switch tab helper
+    btnApplyScript.addEventListener('click', () => {
+        const text = txtScriptOutput.value.trim();
+        if (!text) return;
+
+        try {
+            // Create a virtual file object and assign it to the file input
+            const file = new File([text], 'script.txt', { type: 'text/plain' });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('script').files = dataTransfer.files;
+
+            alert('Đã tự động điền kịch bản vào Form tạo Video!');
+            
+            // Switch back to create video tab
+            switchTab('create-video-tab');
+        } catch (e) {
+            console.error('Virtual file assignment error:', e);
+            alert('Không hỗ trợ tự động điền ở trình duyệt này. Vui lòng tải file .txt và upload thủ công.');
+        }
+    });
+}
+
+
