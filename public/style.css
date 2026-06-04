@@ -587,10 +587,16 @@ footer {
 
 /* API Debug Widget Styling */
 .api-debug-container {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.api-debug-wrapper {
     position: relative;
     display: inline-flex;
-    justify-content: center;
-    margin-top: 15px;
 }
 
 .api-debug-widget {
@@ -715,7 +721,7 @@ footer {
     border-color: transparent transparent rgba(15, 23, 42, 0.95) transparent;
 }
 
-.api-debug-container:hover .api-details-tooltip {
+.api-debug-wrapper:hover .api-details-tooltip {
     visibility: visible;
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -890,6 +896,95 @@ select option {
     font-size: 1.1em;
     font-weight: 700;
     color: #cbd5e1;
+}
+
+/* --- Volume Slider Styling (Premium, No Icons) --- */
+.volume-slider-wrapper {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+.volume-slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 0.95em;
+    color: #e2e8f0;
+}
+
+.volume-slider-header span:last-child {
+    font-family: monospace;
+    font-size: 1.1em;
+    color: var(--primary-color);
+}
+
+.volume-slider-wrapper input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.volume-slider-wrapper input[type="range"]:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Webkit browser slider track & thumb */
+.volume-slider-wrapper input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    box-shadow: 0 0 10px var(--primary-glow);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.volume-slider-wrapper input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: #818cf8;
+}
+
+/* Firefox slider track & thumb */
+.volume-slider-wrapper input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 50%;
+    background: var(--primary-color);
+    box-shadow: 0 0 10px var(--primary-glow);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    cursor: pointer;
+}
+
+.volume-slider-wrapper input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    background: #818cf8;
+}
+
+/* Selected background music label filename indicator */
+.file-name {
+    display: inline-block;
+    word-break: break-all;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px dashed rgba(99, 102, 241, 0.3);
+    padding: 6px 12px;
+    border-radius: 8px;
+    color: #a5b4fc !important;
+    margin-top: 10px !important;
 }
 
 

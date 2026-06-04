@@ -23,12 +23,13 @@ const app = express();
 // In-memory store for session progress
 const sessions = {};
 
-async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9') {
+async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9', bgmVolume = 30) {
   try {
-    const { audio, script, images, backgroundImage } = files;
+    const { audio, script, images, backgroundImage, bgm } = files;
     const audioPath = audio[0].path;
     const scriptPath = script[0].path;
     const bgPath = backgroundImage && backgroundImage.length > 0 ? backgroundImage[0].path : null;
+    const bgmPath = bgm && bgm.length > 0 ? bgm[0].path : null;
 
     // Step 0: Background removal and compositing (rembg / whitekey)
     console.log(`[Session ${sessionId}] Step 0: Processing backgrounds in mode ${backgroundMode}...`);
@@ -122,7 +123,7 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].statusMessage = 'Rendering final video with FFmpeg...';
     
     const outputPath = path.join(sessionDir, 'output.mp4');
-    await ffmpegRenderer.renderVideo(timeline, audioPath, assPath, outputPath, aspectRatio, (ffmpegProgress) => {
+    await ffmpegRenderer.renderVideo(timeline, audioPath, assPath, outputPath, aspectRatio, bgmPath, bgmVolume / 100, (ffmpegProgress) => {
       if (ffmpegProgress.step === 'rendering_scene') {
         const percent = Math.round((ffmpegProgress.current / ffmpegProgress.total) * 35); // scales from 0 to 35% (from 55% to 90%)
         sessions[sessionId].progress = 55 + percent;
@@ -177,8 +178,10 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     const scriptFiles = req.files ? req.files.filter(f => f.fieldname === 'script') : [];
     const imageFiles = req.files ? req.files.filter(f => f.fieldname === 'images') : [];
     const bgFiles = req.files ? req.files.filter(f => f.fieldname === 'backgroundImage') : [];
+    const bgmFiles = req.files ? req.files.filter(f => f.fieldname === 'bgm') : [];
     const backgroundMode = req.body.backgroundMode || 'whitekey';
     const aspectRatio = req.body.aspectRatio || '16:9';
+    const bgmVolume = req.body.bgmVolume !== undefined ? parseFloat(req.body.bgmVolume) : 30;
 
     if (audioFiles.length === 0 || scriptFiles.length === 0 || imageFiles.length === 0) {
       return res.status(400).json({ error: 'Missing required files: audio, script, or images' });
@@ -201,11 +204,12 @@ app.post('/api/upload', upload.any(), async (req, res) => {
       audio: audioFiles,
       script: scriptFiles,
       images: imageFiles,
-      backgroundImage: bgFiles
+      backgroundImage: bgFiles,
+      bgm: bgmFiles
     };
 
     // Start background processing
-    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio);
+    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio, bgmVolume);
 
     res.status(202).json({
       sessionId,
@@ -409,6 +413,61 @@ app.get('/api/debug-openai', async (req, res) => {
       message: errMsg,
       details: details,
       is401
+    });
+  }
+});
+
+
+app.get('/api/debug-gemini', async (req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const isPlaceholder = !apiKey || apiKey.trim() === '';
+
+  if (isPlaceholder) {
+    return res.json({
+      status: 'placeholder',
+      message: 'Gemini Offline (No Key)',
+      details: 'GEMINI_API_KEY is missing in your .env file. Please add your Gemini API Key to enable the AI Script Assistant.'
+    });
+  }
+
+  try {
+    const axios = require('axios');
+    const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    const response = await axios.get(testUrl, {
+      timeout: 8000
+    });
+
+    if (response.status === 200) {
+      return res.json({
+        status: 'active',
+        message: 'Active (Gemini Online)',
+        details: `Key is valid. Google returned ${response.data.models ? response.data.models.length : 0} available models.`
+      });
+    }
+  } catch (error) {
+    let errMsg = error.message;
+    let details = 'Failed to connect to Google Gemini API.';
+    let is400 = false;
+
+    if (error.response) {
+      if (error.response.status === 400 || error.response.status === 403) {
+        is400 = true;
+        errMsg = 'Invalid API Key (400/403 Error)';
+        details = 'The API key provided was rejected by Google Gemini. Please check your GEMINI_API_KEY in your .env file.';
+      } else {
+        errMsg = `Gemini returned status ${error.response.status}`;
+        details = JSON.stringify(error.response.data || {});
+      }
+    } else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      errMsg = 'Connection Timed Out';
+      details = 'Could not reach generativelanguage.googleapis.com. Check your internet connection or firewall rules.';
+    }
+
+    return res.json({
+      status: 'error',
+      message: errMsg,
+      details: details,
+      is400
     });
   }
 });

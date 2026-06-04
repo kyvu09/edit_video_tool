@@ -72,18 +72,86 @@ function removeImage(index) {
     renderPreviews();
 }
 
-// Toggle Background removal mode dropdown based on background image selection
-const bgSelectorInput = document.getElementById('backgroundImage');
-const bgModeSection = document.getElementById('bgModeSection');
-if (bgSelectorInput && bgModeSection) {
-    bgSelectorInput.addEventListener('change', () => {
-        if (bgSelectorInput.files[0]) {
-            bgModeSection.style.display = 'block';
+// Audio file selection display status
+const audioInput = document.getElementById('audio');
+const audioFileName = document.getElementById('audioFileName');
+if (audioInput && audioFileName) {
+    audioInput.addEventListener('change', () => {
+        if (audioInput.files[0]) {
+            audioFileName.textContent = `Đã chọn: ${audioInput.files[0].name}`;
+            audioFileName.style.display = 'inline-block';
         } else {
-            bgModeSection.style.display = 'none';
+            audioFileName.textContent = '';
+            audioFileName.style.display = 'none';
         }
     });
 }
+
+// Script file selection display status
+const scriptInput = document.getElementById('script');
+const scriptFileName = document.getElementById('scriptFileName');
+if (scriptInput && scriptFileName) {
+    scriptInput.addEventListener('change', () => {
+        if (scriptInput.files[0]) {
+            scriptFileName.textContent = `Đã chọn: ${scriptInput.files[0].name}`;
+            scriptFileName.style.display = 'inline-block';
+        } else {
+            scriptFileName.textContent = '';
+            scriptFileName.style.display = 'none';
+        }
+    });
+}
+
+// Toggle Background removal mode dropdown & display status based on background image selection
+const bgSelectorInput = document.getElementById('backgroundImage');
+const bgModeSection = document.getElementById('bgModeSection');
+const bgImageFileName = document.getElementById('bgImageFileName');
+if (bgSelectorInput) {
+    bgSelectorInput.addEventListener('change', () => {
+        if (bgSelectorInput.files[0]) {
+            if (bgModeSection) bgModeSection.style.display = 'block';
+            if (bgImageFileName) {
+                bgImageFileName.textContent = `Đã chọn: ${bgSelectorInput.files[0].name}`;
+                bgImageFileName.style.display = 'inline-block';
+            }
+        } else {
+            if (bgModeSection) bgModeSection.style.display = 'none';
+            if (bgImageFileName) {
+                bgImageFileName.textContent = '';
+                bgImageFileName.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Background music selection handling (No Icons)
+const bgmInput = document.getElementById('bgm');
+const bgmVolumeContainer = document.getElementById('bgmVolumeContainer');
+const bgmVolumeInput = document.getElementById('bgmVolume');
+const bgmVolumeValText = document.getElementById('bgmVolumeValText');
+const bgmFileName = document.getElementById('bgmFileName');
+
+if (bgmInput) {
+    bgmInput.addEventListener('change', () => {
+        if (bgmInput.files[0]) {
+            const file = bgmInput.files[0];
+            bgmFileName.textContent = `Đã chọn: ${file.name}`;
+            bgmFileName.style.display = 'inline-block';
+            bgmVolumeContainer.style.display = 'block';
+        } else {
+            bgmFileName.textContent = '';
+            bgmFileName.style.display = 'none';
+            bgmVolumeContainer.style.display = 'none';
+        }
+    });
+}
+
+if (bgmVolumeInput && bgmVolumeValText) {
+    bgmVolumeInput.addEventListener('input', (e) => {
+        bgmVolumeValText.textContent = `${e.target.value}%`;
+    });
+}
+
 
 // Form submission
 form.addEventListener('submit', async (e) => {
@@ -111,6 +179,14 @@ form.addEventListener('submit', async (e) => {
 
     const aspectRatio = document.getElementById('aspectRatio').value;
     formData.append('aspectRatio', aspectRatio);
+    
+    // Background music & volume submission (No Icons)
+    const bgmFile = document.getElementById('bgm').files[0];
+    if (bgmFile) {
+        formData.append('bgm', bgmFile);
+        const bgmVolume = document.getElementById('bgmVolume').value;
+        formData.append('bgmVolume', bgmVolume);
+    }
     
     selectedImages.forEach((imgObj) => {
         formData.append('images', imgObj.file);
@@ -314,13 +390,93 @@ if (apiDebugWidget) {
     });
 }
 
+// --- Gemini API Debug Tooling ---
+const geminiStatusDot = document.getElementById('geminiStatusDot');
+const geminiStatusText = document.getElementById('geminiStatusText');
+const geminiDetailsTooltip = document.getElementById('geminiDetailsTooltip');
+const btnCheckGemini = document.getElementById('btnCheckGemini');
+
+async function checkGeminiApi() {
+    if (!geminiStatusDot || !geminiStatusText) return;
+    
+    // Set checking state
+    geminiStatusDot.className = 'api-status-dot checking';
+    geminiStatusText.textContent = 'Testing Gemini API...';
+    geminiDetailsTooltip.textContent = 'Sending request to verify connectivity and key validity...';
+    if (btnCheckGemini) btnCheckGemini.disabled = true;
+    
+    try {
+        const response = await fetch('/api/debug-gemini');
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Reset classes
+        geminiStatusDot.className = 'api-status-dot';
+        
+        // Apply status class and text
+        if (data.status === 'active') {
+            geminiStatusDot.classList.add('active');
+            geminiStatusText.textContent = data.message;
+            geminiStatusText.style.color = '#10b981'; // Success emerald
+        } else if (data.status === 'placeholder') {
+            geminiStatusDot.classList.add('placeholder');
+            geminiStatusText.textContent = data.message;
+            geminiStatusText.style.color = '#f59e0b'; // Amber yellow
+        } else {
+            geminiStatusDot.classList.add('error');
+            geminiStatusText.textContent = data.message;
+            geminiStatusText.style.color = '#ef4444'; // Red
+        }
+        
+        // Populate tooltip with details
+        geminiDetailsTooltip.innerHTML = `
+            <strong>Status Details:</strong><br>
+            ${data.details}<br><br>
+            <span style="font-size: 0.85em; opacity: 0.8;">Click this widget to refresh status anytime.</span>
+        `;
+        
+    } catch (error) {
+        geminiStatusDot.className = 'api-status-dot error';
+        geminiStatusText.textContent = 'API Offline / Error';
+        geminiStatusText.style.color = '#ef4444';
+        geminiDetailsTooltip.innerHTML = `
+            <strong>Verification Error:</strong><br>
+            ${error.message}<br><br>
+            Make sure your backend server is running and accessible.
+        `;
+    } finally {
+        if (btnCheckGemini) btnCheckGemini.disabled = false;
+    }
+}
+
+// Register click trigger for manual check
+if (btnCheckGemini) {
+    btnCheckGemini.addEventListener('click', (e) => {
+        e.stopPropagation();
+        checkGeminiApi();
+    });
+}
+
+// Let users click the whole widget to refresh
+const geminiDebugWidget = document.getElementById('geminiDebugWidget');
+if (geminiDebugWidget) {
+    geminiDebugWidget.addEventListener('click', () => {
+        checkGeminiApi();
+    });
+}
+
 // Run status verification on initialization
 document.addEventListener('DOMContentLoaded', () => {
     checkOpenAIApi();
+    checkGeminiApi();
     initTabs();
     initAIAssistant();
 });
 checkOpenAIApi(); // Run immediately too in case DOM is already loaded
+checkGeminiApi(); // Run immediately too in case DOM is already loaded
 
 
 // --- Tab Switcher Logic ---
