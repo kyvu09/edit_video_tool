@@ -100,4 +100,4 @@ Image prompt for WhiskLab:
 Continue until the script ends.
 
 Script:
-[paste the script here] #kịch bản người dùng sẽ kèm ở đây
+

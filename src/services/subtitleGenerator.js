@@ -82,7 +82,7 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
     playResX = 1080;
     playResY = 1920;
     fontSize = 60;
-    marginV = 650;  // Raised lower-middle position for vertical video overlays (e.g. TikTok)
+    marginV = 150;  // Positioned at the bottom to avoid obscuring the center image
     outline = 4;
     shadow = 2;
     bold = 1;       // Bold font is standard for short videos
