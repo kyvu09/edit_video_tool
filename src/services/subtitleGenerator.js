@@ -227,7 +227,8 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
   let outline = 4;
   let shadow = 2;
   let bold = 0;
-  let maxChars = 50;
+  let maxChars = 80;        // max chars per subtitle chunk
+  let maxCharsPerLine = 42; // max chars per visible line in ASS
   let zoomScale = 115;
 
   if (aspectRatio === '9:16') {
@@ -238,7 +239,8 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
     outline = 3;
     shadow = 1;
     bold = 1;
-    maxChars = 40;
+    maxChars = 60;        // max chars per subtitle chunk
+    maxCharsPerLine = 32; // max chars per visible line in ASS
     zoomScale = 112;
   }
 
@@ -277,7 +279,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     if (karaokeText) {
       text = `${anim}${karaokeText}`;
     } else {
-      text = `${anim}${buildStyledAssText(item.text, maxChars, 2)}`;
+      text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
     }
 
     events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
