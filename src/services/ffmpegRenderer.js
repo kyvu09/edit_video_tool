@@ -23,33 +23,28 @@ function execAsync(cmd) {
 //      (adjacent fades create a smooth dissolve between consecutive scenes)
 function buildSceneFilter(duration, aspectRatio = '16:9', fps = 30) {
   const frames     = Math.max(30, Math.round(duration * fps));
-  const zoomInc    = (0.05 / frames).toFixed(6);          // smooth zoom rate
+  const zoomInc    = (0.06 / frames).toFixed(6);          // smooth zoom rate (1.0 -> 1.06)
   const fadeDur    = Math.min(0.4, duration / 3).toFixed(3);
   const fadeOutSt  = Math.max(0, duration - parseFloat(fadeDur)).toFixed(3);
 
-  if (aspectRatio === '9:16') {
-    return [
-      // 1. Scale to cover vertical 1080x1920, and crop the center
-      'scale=1080:1920:force_original_aspect_ratio=increase',
-      'crop=1080:1920',
-      // 2. Slow Zoom In (Ken Burns)
-      `zoompan=z='min(zoom+${zoomInc},1.06)':d=${frames}:s=1080x1920:fps=${fps}`,
-      // 3. Transitions
-      `fade=t=in:st=0:d=${fadeDur}`,
-      `fade=t=out:st=${fadeOutSt}:d=${fadeDur}`
-    ].join(',');
-  } else {
-    return [
-      // 1. Normalise to exactly 1920×1080 (letterbox / pillarbox if needed)
-      'scale=1920:1080:force_original_aspect_ratio=decrease',
-      'pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black',
-      // 2. Slow Zoom In (Ken Burns) — zoompan drives frame generation at target fps
-      `zoompan=z='min(zoom+${zoomInc},1.06)':d=${frames}:s=1920x1080:fps=${fps}`,
-      // 3. Crossfade dissolve via fade-in then fade-out
-      `fade=t=in:st=0:d=${fadeDur}`,
-      `fade=t=out:st=${fadeOutSt}:d=${fadeDur}`
-    ].join(',');
-  }
+  const size = aspectRatio === '9:16' ? '1080x1920' : '1920x1080';
+
+  // 1. Normalization filters (scale and crop/pad)
+  const normFilters = aspectRatio === '9:16'
+    ? ['scale=1080:1920:force_original_aspect_ratio=increase', 'crop=1080:1920']
+    : ['scale=1920:1080:force_original_aspect_ratio=decrease', 'pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black'];
+
+  // 2. Define the animations
+  // Removed other camera movements (zoom-in, pans, push-up) per user request to keep only zoom-out
+  const anim = `zoompan=z='max(1.06-${zoomInc}*on,1.0)':x='(iw-ow)/2':y='(ih-oh)/2':d=${frames}:s=${size}:fps=${fps}`;
+
+  // 3. Combine into final filter chain with fade transitions
+  return [
+    ...normFilters,
+    anim,
+    `fade=t=in:st=0:d=${fadeDur}`,
+    `fade=t=out:st=${fadeOutSt}:d=${fadeDur}`
+  ].join(',');
 }
 
 // ── Main render function ──────────────────────────────────────────────────────

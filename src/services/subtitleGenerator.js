@@ -6,7 +6,7 @@ function formatASS(seconds) {
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
   const cs = Math.round((seconds % 1) * 100);
-  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '00')}.${String(cs).padStart(2, '0')}`;
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
 }
 
 // ── SRT timestamp formatter: HH:MM:SS,mmm ───────────────────────────────────
@@ -20,73 +20,226 @@ function formatSRT(seconds) {
 
 // ── Escape ASS special characters in plain text ──────────────────────────────
 function escapeASS(text) {
-  return text
-    .replace(/\\/g, '\\\\')   // literal backslash → escaped
-    .replace(/\{/g, '\\{')    // { is start of tag block → escape
-    .replace(/\}/g, '\\}');   // } is end of tag block → escape
+  return String(text)
+    .replace(/\\/g, '\\\\')
+    .replace(/\{/g, '\\{')
+    .replace(/\}/g, '\\}');
 }
 
 // ── Keyword Emphasis ─────────────────────────────────────────────────────────
 // Highlights ALL-CAPS sequences of 3+ ASCII letters in gold + bold.
-// ASS color format: &HAABBGGRR  →  Gold (R=255,G=215,B=0): &H0000D7FF
 function applyKeywordEmphasis(text) {
   return text.replace(/\b[A-Z]{3,}\b/g, (match) => {
     return `{\\c&H0000D7FF&\\b1}${match}{\\c&H00FFFFFF&\\b0}`;
   });
 }
 
-// ── Karaoke word builder ──────────────────────────────────────────────────────
-// Uses \kf{cs} ASS tags to fill each word as it is being spoken.
-// Secondary color (gray) = unspoken, Primary color (white) = spoken.
-function buildKaraokeText(wordTimestamps, sceneStart, sceneEnd) {
-  if (!wordTimestamps || wordTimestamps.length === 0) return null;
+// ── Split plain text into chunks ──────────────────────────────────────────────
+function splitTextIntoChunks(text, maxChars = 40) {
+  const words = String(text).trim().split(/\s+/).filter(Boolean);
+  const chunks = [];
+  let currentChunk = [];
+  let currentLength = 0;
 
-  // Find words that fall within this scene's time window (±100ms tolerance)
-  const sceneWords = wordTimestamps.filter(
-    w => w.start >= sceneStart - 0.1 && w.start < sceneEnd
-  );
-  if (sceneWords.length === 0) return null;
+  for (const word of words) {
+    const spaceNeeded = currentChunk.length > 0 ? 1 : 0;
+
+    if (currentLength + spaceNeeded + word.length > maxChars) {
+      if (currentChunk.length > 0) {
+        chunks.push(currentChunk.join(' '));
+        currentChunk = [word];
+        currentLength = word.length;
+      } else {
+        chunks.push(word);
+        currentChunk = [];
+        currentLength = 0;
+      }
+    } else {
+      currentChunk.push(word);
+      currentLength += spaceNeeded + word.length;
+    }
+  }
+
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join(' '));
+  }
+
+  return chunks;
+}
+
+// ── Wrap text for ASS display ────────────────────────────────────────────────
+function wrapText(text, maxCharsPerLine = 18, maxLines = 2) {
+  const words = String(text).trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [''];
+
+  const lines = [];
+  let current = '';
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const testLine = current ? `${current} ${word}` : word;
+
+    if (testLine.length <= maxCharsPerLine || current === '') {
+      current = testLine;
+      continue;
+    }
+
+    lines.push(current);
+    current = word;
+
+    if (lines.length === maxLines - 1) {
+      const rest = [current, ...words.slice(i + 1)].join(' ');
+      lines.push(rest);
+      return lines.slice(0, maxLines);
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines.slice(0, maxLines);
+}
+
+function buildStyledAssText(text, maxCharsPerLine = 18, maxLines = 2) {
+  return wrapText(text, maxCharsPerLine, maxLines)
+    .map(line => applyKeywordEmphasis(escapeASS(line)))
+    .join('\\N');
+}
+
+// ── Chunk the entire timeline to max characters per subtitle ────────────────
+function chunkTimeline(timeline, wordTimestamps, maxChars = 40) {
+  const newTimeline = [];
+
+  timeline.forEach((item) => {
+    const sceneStart = item.start;
+    const sceneEnd = item.end;
+    const duration = sceneEnd - sceneStart;
+
+    let sceneWords = [];
+    if (wordTimestamps && wordTimestamps.length > 0) {
+      sceneWords = wordTimestamps.filter(
+        w => w.start >= sceneStart - 0.1 && w.start < sceneEnd
+      );
+    }
+
+    if (sceneWords.length > 0) {
+      let currentChunkWords = [];
+      let currentLength = 0;
+      const chunksOfWords = [];
+
+      sceneWords.forEach((wordObj) => {
+        const wordStr = wordObj.word;
+        const spaceNeeded = currentChunkWords.length > 0 ? 1 : 0;
+
+        if (currentLength + spaceNeeded + wordStr.length > maxChars) {
+          if (currentChunkWords.length > 0) {
+            chunksOfWords.push(currentChunkWords);
+            currentChunkWords = [wordObj];
+            currentLength = wordStr.length;
+          } else {
+            chunksOfWords.push([wordObj]);
+            currentChunkWords = [];
+            currentLength = 0;
+          }
+        } else {
+          currentChunkWords.push(wordObj);
+          currentLength += spaceNeeded + wordStr.length;
+        }
+      });
+
+      if (currentChunkWords.length > 0) {
+        chunksOfWords.push(currentChunkWords);
+      }
+
+      for (let i = 0; i < chunksOfWords.length; i++) {
+        const chunk = chunksOfWords[i];
+        const start = i === 0 ? sceneStart : chunk[0].start;
+        const end = i === chunksOfWords.length - 1 ? sceneEnd : chunksOfWords[i + 1][0].start;
+
+        newTimeline.push({
+          text: chunk.map(w => w.word).join(' '),
+          start,
+          end,
+          words: chunk
+        });
+      }
+    } else {
+      const textChunks = splitTextIntoChunks(item.text, maxChars);
+
+      if (textChunks.length <= 1) {
+        newTimeline.push({
+          text: item.text,
+          start: sceneStart,
+          end: sceneEnd,
+          words: null
+        });
+      } else {
+        const totalChars = textChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        let currentStart = sceneStart;
+
+        textChunks.forEach((chunk, index) => {
+          const chunkDuration = (chunk.length / totalChars) * duration;
+          const end = index === textChunks.length - 1 ? sceneEnd : currentStart + chunkDuration;
+
+          newTimeline.push({
+            text: chunk,
+            start: currentStart,
+            end,
+            words: null
+          });
+
+          currentStart = end;
+        });
+      }
+    }
+  });
+
+  return newTimeline;
+}
+
+// ── Karaoke word builder for a specific word chunk ───────────────────────────
+function buildKaraokeTextForChunk(chunkWords, chunkStart) {
+  if (!chunkWords || chunkWords.length === 0) return null;
 
   let karaokeText = '';
-  sceneWords.forEach(word => {
+  let lastEnd = chunkStart;
+
+  chunkWords.forEach(word => {
+    const delay = Math.max(0, word.start - lastEnd);
+    const delayCs = Math.round(delay * 100);
     const durationCs = Math.max(1, Math.round((word.end - word.start) * 100));
+
+    if (delayCs > 0) {
+      karaokeText += `{\\kf${delayCs}} `;
+    }
+
     karaokeText += `{\\kf${durationCs}}${escapeASS(word.word)} `;
+    lastEnd = word.end;
   });
+
   return karaokeText.trim();
 }
 
 // ── generateASS ───────────────────────────────────────────────────────────────
-// Produces a rich .ass subtitle file with:
-//   • Subtitle Pop    – fade-in (180ms) + scale bounce (108%→100%) on entry
-//   • Karaoke         – per-word fill highlighting if wordTimestamps supplied
-//   • Keyword Emphasis– ALL-CAPS words rendered in gold + bold
-//
-// @param {Array}  timeline       Scene timeline items [{text, start, end}, ...]
-// @param {string} outputPath     Where to write the .ass file
-// @param {Array}  wordTimestamps Flat list of {word, start, end} (optional)
-// @param {Array}  timeline       Scene timeline items [{text, start, end}, ...]
-// @param {string} outputPath     Where to write the .ass file
-// @param {Array}  wordTimestamps Flat list of {word, start, end} (optional)
-// @param {string} aspectRatio    Video aspect ratio: '16:9' | '9:16'
 function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = '16:9') {
   let playResX = 1920;
   let playResY = 1080;
   let fontSize = 72;
-  let marginV = 110;
+  let marginV = 80;
   let outline = 4;
   let shadow = 2;
   let bold = 0;
-  let popAnimation = '{\\fad(180,120)\\t(0,250,\\fscx108\\fscy108)\\t(250,450,\\fscx100\\fscy100)}';
+  let maxChars = 25;
+  let zoomScale = 115;
 
   if (aspectRatio === '9:16') {
     playResX = 1080;
     playResY = 1920;
-    fontSize = 60;
-    marginV = 150;  // Positioned at the bottom to avoid obscuring the center image
-    outline = 4;
-    shadow = 2;
-    bold = 1;       // Bold font is standard for short videos
-    popAnimation = '{\\fad(100,100)\\t(0,120,\\fscx115\\fscy115)\\t(120,240,\\fscx100\\fscy100)}';
+    fontSize = 48;
+    marginV = 70;
+    outline = 3;
+    shadow = 1;
+    bold = 1;
+    maxChars = 30;
+    zoomScale = 112;
   }
 
   const header = `[Script Info]
@@ -106,24 +259,25 @@ Style: Default,Arial,${fontSize},&H00FFFFFF,&H00888888,&H00000000,&HC8000000,${b
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  // ── Subtitle Pop animation tags ──
-  const POP = popAnimation;
+  const chunked = chunkTimeline(timeline, wordTimestamps, maxChars);
 
   let events = '';
-  timeline.forEach((item) => {
+
+  chunked.forEach((item) => {
     const start = formatASS(item.start);
-    const end   = formatASS(item.end);
+    const end = formatASS(item.end);
+    const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
+    
+    // Zoom-out tag: starts at zoomScale% and scales down to 100% over the exact duration
+    const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
 
     let text;
-    const karaokeText = buildKaraokeText(wordTimestamps, item.start, item.end);
+    const karaokeText = item.words ? buildKaraokeTextForChunk(item.words, item.start) : null;
 
     if (karaokeText) {
-      // ── Karaoke mode: words light up as they are spoken ──
-      // Pop tags precede the karaoke text; secondary color shows unspoken words in gray
-      text = `${POP}${karaokeText}`;
+      text = `${anim}${karaokeText}`;
     } else {
-      // ── Standard mode: pop + keyword emphasis ──
-      text = `${POP}${applyKeywordEmphasis(escapeASS(item.text))}`;
+      text = `${anim}${buildStyledAssText(item.text, maxChars, 2)}`;
     }
 
     events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
@@ -141,6 +295,7 @@ function generateSRT(timestamps, outputPath) {
     srtContent += `${formatSRT(ts.start)} --> ${formatSRT(ts.end)}\n`;
     srtContent += `${ts.text}\n\n`;
   });
+
   fs.writeFileSync(outputPath, srtContent.trim());
   return outputPath;
 }
