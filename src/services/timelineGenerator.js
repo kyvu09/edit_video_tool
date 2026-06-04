@@ -6,28 +6,56 @@ function generateTimeline(scenes, timestamps, imageFiles) {
   if (!scenes || scenes.length === 0) return [];
   if (!timestamps || timestamps.length === 0) return [];
 
-  // ── Step 1: Assign each timestamp segment to its best-matching scene ──────
+  // ── Step 1: Assign each timestamp segment to scenes using Dynamic Programming ──────
+  // This guarantees monotonic (chronological) ordering of segments across scenes.
+  const N = timestamps.length;
+  const K = scenes.length;
+
+  // dp[k][i] = max similarity using first k scenes and first i segments
+  const dp = Array.from({ length: K + 1 }, () => Array(N + 1).fill(-Infinity));
+  const back = Array.from({ length: K + 1 }, () => Array(N + 1).fill(0));
+  dp[0][0] = 0;
+
+  for (let k = 1; k <= K; k++) {
+    const sceneText = scenes[k - 1].text.toLowerCase();
+    for (let i = 0; i <= N; i++) {
+      let bestScore = dp[k - 1][i]; // score if 0 segments assigned to this scene
+      let bestJ = i;
+      
+      let chunkText = "";
+      for (let j = i - 1; j >= 0; j--) {
+        chunkText = chunkText === "" ? timestamps[j].text : timestamps[j].text + " " + chunkText;
+        if (dp[k - 1][j] === -Infinity) continue;
+        
+        const sim = stringSimilarity(sceneText, chunkText.toLowerCase());
+        
+        if (dp[k - 1][j] + sim >= bestScore) {
+          bestScore = dp[k - 1][j] + sim;
+          bestJ = j;
+        }
+      }
+      dp[k][i] = bestScore;
+      back[k][i] = bestJ;
+    }
+  }
+
   const sceneSegmentsMap = {};
   scenes.forEach(scene => { sceneSegmentsMap[scene.scene] = []; });
 
-  timestamps.forEach(ts => {
-    let bestScene = null;
-    let bestScore = -1;
-    scenes.forEach(scene => {
-      const score = stringSimilarity(scene.text.toLowerCase(), ts.text.toLowerCase());
-      if (score > bestScore) { bestScore = score; bestScene = scene; }
-    });
-    if (bestScene) {
-      sceneSegmentsMap[bestScene.scene].push(ts);
+  let currN = N;
+  for (let k = K; k >= 1; k--) {
+    let startJ = back[k][currN];
+    for (let m = startJ; m < currN; m++) {
+      sceneSegmentsMap[scenes[k - 1].scene].push(timestamps[m]);
     }
-  });
+    currN = startJ;
+  }
 
   // ── Step 2: Build raw timeline entries from assigned segments ─────────────
   const timeline = scenes.map((scene, index) => {
     const segments = sceneSegmentsMap[scene.scene];
     let start, end;
     if (segments && segments.length > 0) {
-      segments.sort((a, b) => a.start - b.start);
       start = segments[0].start;
       end = segments[segments.length - 1].end;
     }

@@ -227,7 +227,7 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
   let outline = 4;
   let shadow = 2;
   let bold = 0;
-  let maxChars = 25;
+  let maxChars = 50;
   let zoomScale = 115;
 
   if (aspectRatio === '9:16') {
@@ -238,7 +238,7 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
     outline = 3;
     shadow = 1;
     bold = 1;
-    maxChars = 30;
+    maxChars = 40;
     zoomScale = 112;
   }
 
