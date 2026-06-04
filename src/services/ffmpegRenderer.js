@@ -48,10 +48,19 @@ function buildSceneFilter(duration, aspectRatio = '16:9', fps = 30) {
 }
 
 // ── Main render function ──────────────────────────────────────────────────────
-async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspectRatio = '16:9', onProgress) {
+async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspectRatio = '16:9', bgmPath = null, bgmVolume = 0.3, onProgress) {
   if (typeof aspectRatio === 'function') {
     onProgress = aspectRatio;
     aspectRatio = '16:9';
+    bgmPath = null;
+    bgmVolume = 0.3;
+  } else if (typeof bgmPath === 'function') {
+    onProgress = bgmPath;
+    bgmPath = null;
+    bgmVolume = 0.3;
+  } else if (typeof bgmVolume === 'function') {
+    onProgress = bgmVolume;
+    bgmVolume = 0.3;
   }
 
   if (!timeline || timeline.length === 0) {
@@ -101,13 +110,30 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
     fs.writeFileSync(concatFile, concatContent);
 
     const noSubOutput = outputPath.replace('.mp4', '_nosub.mp4');
+    
+    let audioInputArgs = '';
+    let filterComplexArgs = '';
+    let audioMapArgs = '';
+
+    if (bgmPath && fs.existsSync(bgmPath)) {
+      audioInputArgs = `-stream_loop -1 -i "${bgmPath}"`;
+      filterComplexArgs = `-filter_complex "[1:a]volume=1.0[vover];[2:a]volume=${bgmVolume}[bgm];[vover][bgm]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]"`;
+      audioMapArgs = `-map 0:v:0 -map "[a]"`;
+    } else {
+      audioMapArgs = `-map 0:v:0 -map 1:a:0`;
+    }
+
     const concatCmd = [
       `"${ffmpegPath}"`,
       `-y -f concat -safe 0 -i "${concatFile}"`,
       `-i "${audioPath}"`,
-      `-c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest`,
+      audioInputArgs,
+      filterComplexArgs,
+      `-c:v copy -c:a aac`,
+      audioMapArgs,
+      `-shortest`,
       `"${noSubOutput}"`
-    ].join(' ');
+    ].filter(Boolean).join(' ');
     await execAsync(concatCmd);
 
     // ── Step C: Burn subtitles (ASS → full style; SRT → basic) ───────────────
