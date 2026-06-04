@@ -14,17 +14,51 @@ const scriptParser = require('./src/services/scriptParser');
 const timelineGenerator = require('./src/services/timelineGenerator');
 const subtitleGenerator = require('./src/services/subtitleGenerator');
 const ffmpegRenderer = require('./src/services/ffmpegRenderer');
+const bgRemovalService = require('./src/services/bgRemovalService');
+const geminiService = require('./src/services/geminiService');
+
 
 const app = express();
 
 // In-memory store for session progress
 const sessions = {};
 
-async function processVideoBackground(sessionId, files, sessionDir) {
+async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9') {
   try {
-    const { audio, script, images } = files;
+    const { audio, script, images, backgroundImage } = files;
     const audioPath = audio[0].path;
     const scriptPath = script[0].path;
+    const bgPath = backgroundImage && backgroundImage.length > 0 ? backgroundImage[0].path : null;
+
+    // Step 0: Background removal and compositing (rembg / whitekey)
+    console.log(`[Session ${sessionId}] Step 0: Processing backgrounds in mode ${backgroundMode}...`);
+    sessions[sessionId].currentStep = 'step-rembg';
+    sessions[sessionId].progress = 2;
+    
+    if (bgPath) {
+      sessions[sessionId].statusMessage = 'Tách nền các ảnh scene...';
+      const imagePaths = images.map(img => img.path);
+      const processedPaths = await bgRemovalService.processBackgrounds(
+        imagePaths,
+        bgPath,
+        sessionDir,
+        backgroundMode,
+        aspectRatio,
+        (curr, tot) => {
+          const pct = Math.round((curr / tot) * 15); // scales 0 to 15%
+          sessions[sessionId].progress = 2 + pct;
+          sessions[sessionId].statusMessage = `Tách nền ảnh scene ${curr + 1} / ${tot}...`;
+        }
+      );
+      // Update image paths in Multer objects to point to composited images
+      images.forEach((img, idx) => {
+        img.path = processedPaths[idx];
+      });
+      sessions[sessionId].statusMessage = 'Tách & ghép nền hoàn tất.';
+    } else {
+      sessions[sessionId].statusMessage = 'Bỏ qua tách nền (Không upload ảnh background).';
+    }
+    sessions[sessionId].progress = 20;
 
     // Parse the script first (very fast) so we have scene texts available for the Whisper fallback
     const scriptContent = fs.readFileSync(scriptPath, 'utf-8');
@@ -34,7 +68,7 @@ async function processVideoBackground(sessionId, files, sessionDir) {
     // Step 1: Extract timestamps from audio
     console.log(`[Session ${sessionId}] Step 1: Extracting timestamps...`);
     sessions[sessionId].currentStep = 'step-whisper';
-    sessions[sessionId].progress = 5;
+    sessions[sessionId].progress = 22;
     
     const apiKey = process.env.OPENAI_API_KEY;
     const isPlaceholder = !apiKey || apiKey.startsWith('sk-test-key') || apiKey === '';
@@ -51,34 +85,36 @@ async function processVideoBackground(sessionId, files, sessionDir) {
     } else {
       sessions[sessionId].statusMessage = 'Timestamps extracted successfully.';
     }
-    sessions[sessionId].progress = 25;
+    sessions[sessionId].progress = 40;
 
     // Step 2: Parse script (already parsed, just update progress and UI)
     console.log(`[Session ${sessionId}] Step 2: Parsing scenes...`);
     sessions[sessionId].currentStep = 'step-parse';
-    sessions[sessionId].progress = 28;
+    sessions[sessionId].progress = 42;
     sessions[sessionId].statusMessage = `Identified ${scenes.length} scenes from script.`;
-    sessions[sessionId].progress = 30;
+    sessions[sessionId].progress = 45;
 
     // Step 3: Generate timeline
     console.log(`[Session ${sessionId}] Step 3: Generating timeline...`);
     sessions[sessionId].currentStep = 'step-timeline';
-    sessions[sessionId].progress = 32;
+    sessions[sessionId].progress = 47;
     sessions[sessionId].statusMessage = 'Generating matching scene timeline...';
     
     const timeline = timelineGenerator.generateTimeline(scenes, timestamps, images);
-    sessions[sessionId].progress = 35;
+    sessions[sessionId].progress = 50;
+
+    // Extract word timestamps attached by whisperService
+    const wordTimestamps = timestamps._wordTimestamps || null;
 
     // Step 4: Generate subtitles
     console.log(`[Session ${sessionId}] Step 4: Generating subtitles...`);
     sessions[sessionId].currentStep = 'step-subtitle';
-    sessions[sessionId].progress = 38;
+    sessions[sessionId].progress = 52;
     sessions[sessionId].statusMessage = 'Creating subtitle track...';
     
-    const srtPath = path.join(sessionDir, 'subtitle.srt');
-    // Use timeline (scene-level) for SRT so subtitle transitions match image scene transitions exactly.
-    subtitleGenerator.generateSRT(timeline, srtPath);
-    sessions[sessionId].progress = 40;
+    const assPath = path.join(sessionDir, 'subtitle.ass');
+    subtitleGenerator.generateASS(timeline, assPath, wordTimestamps, aspectRatio);
+    sessions[sessionId].progress = 55;
 
     // Step 5: Render video
     console.log(`[Session ${sessionId}] Step 5: Rendering video with FFmpeg...`);
@@ -86,10 +122,10 @@ async function processVideoBackground(sessionId, files, sessionDir) {
     sessions[sessionId].statusMessage = 'Rendering final video with FFmpeg...';
     
     const outputPath = path.join(sessionDir, 'output.mp4');
-    await ffmpegRenderer.renderVideo(timeline, audioPath, srtPath, outputPath, (ffmpegProgress) => {
+    await ffmpegRenderer.renderVideo(timeline, audioPath, assPath, outputPath, aspectRatio, (ffmpegProgress) => {
       if (ffmpegProgress.step === 'rendering_scene') {
-        const percent = Math.round((ffmpegProgress.current / ffmpegProgress.total) * 50); // scales from 0 to 50
-        sessions[sessionId].progress = 40 + percent;
+        const percent = Math.round((ffmpegProgress.current / ffmpegProgress.total) * 35); // scales from 0 to 35% (from 55% to 90%)
+        sessions[sessionId].progress = 55 + percent;
         sessions[sessionId].statusMessage = `Rendering scene ${ffmpegProgress.current + 1} of ${ffmpegProgress.total}...`;
       } else if (ffmpegProgress.step === 'concatenating') {
         sessions[sessionId].progress = 92;
@@ -140,6 +176,9 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     const audioFiles = req.files ? req.files.filter(f => f.fieldname === 'audio') : [];
     const scriptFiles = req.files ? req.files.filter(f => f.fieldname === 'script') : [];
     const imageFiles = req.files ? req.files.filter(f => f.fieldname === 'images') : [];
+    const bgFiles = req.files ? req.files.filter(f => f.fieldname === 'backgroundImage') : [];
+    const backgroundMode = req.body.backgroundMode || 'whitekey';
+    const aspectRatio = req.body.aspectRatio || '16:9';
 
     if (audioFiles.length === 0 || scriptFiles.length === 0 || imageFiles.length === 0) {
       return res.status(400).json({ error: 'Missing required files: audio, script, or images' });
@@ -152,7 +191,7 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     sessions[sessionId] = {
       status: 'processing',
       progress: 0,
-      currentStep: 'step-whisper',
+      currentStep: 'step-rembg',
       statusMessage: 'Starting video creation...',
       error: null,
       videoUrl: null
@@ -161,11 +200,12 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     const files = {
       audio: audioFiles,
       script: scriptFiles,
-      images: imageFiles
+      images: imageFiles,
+      backgroundImage: bgFiles
     };
 
     // Start background processing
-    processVideoBackground(sessionId, files, sessionDir);
+    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio);
 
     res.status(202).json({
       sessionId,
@@ -175,6 +215,98 @@ app.post('/api/upload', upload.any(), async (req, res) => {
   } catch (error) {
     console.error('Error in /api/upload:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint to generate scenes and split script via Gemini
+app.post('/api/generate-scenes', async (req, res) => {
+  try {
+    const { rawScriptText } = req.body;
+    if (!rawScriptText || rawScriptText.trim() === '') {
+      return res.status(400).json({ error: 'Script text cannot be empty.' });
+    }
+
+    const result = await geminiService.generateScenes(rawScriptText);
+    res.json(result);
+  } catch (error) {
+    console.error('Error in /api/generate-scenes:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// Standalone endpoint for background removal debugging (returns binary image)
+app.post('/api/debug-bg-remove', upload.any(), async (req, res) => {
+  try {
+    const fgFiles = req.files ? req.files.filter(f => f.fieldname === 'foreground') : [];
+    const bgFiles = req.files ? req.files.filter(f => f.fieldname === 'background') : [];
+    const mode = req.body.mode || 'whitekey';
+    const threshold = req.body.threshold || '215';
+
+    if (fgFiles.length === 0) {
+      return res.status(400).json({ error: 'Missing foreground file' });
+    }
+
+    const fgPath = fgFiles[0].path;
+    const bgPath = bgFiles.length > 0 ? bgFiles[0].path : null;
+
+    // Create temporary output path in the upload directory
+    const tempOutName = `debug_rembg_${Date.now()}.png`;
+    const tempOutPath = path.join(uploadDir, tempOutName);
+
+    const pythonPath = process.env.PYTHON_PATH || 'python';
+    const scriptPath = path.resolve(__dirname, 'src', 'services', 'remove_bg.py');
+
+    const args = [
+      `"${pythonPath}"`,
+      `"${scriptPath}"`,
+      `"${path.resolve(fgPath)}"`,
+      `"${path.resolve(tempOutPath)}"`,
+      `"${mode}"`
+    ];
+
+    if (bgPath) {
+      args.push(`"${path.resolve(bgPath)}"`);
+    }
+
+    if (mode === 'whitekey' && threshold) {
+      args.push(`"${threshold}"`);
+    }
+
+    const cmd = args.join(' ');
+    console.log(`[HTTP Debug BG] Running: ${cmd}`);
+
+    const { exec } = require('child_process');
+    exec(cmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      // Clean up uploaded temporary files immediately
+      try {
+        if (fs.existsSync(fgPath)) fs.unlinkSync(fgPath);
+        if (bgPath && fs.existsSync(bgPath)) fs.unlinkSync(bgPath);
+      } catch (e) {
+        console.error('Error cleaning up temp upload files:', e.message);
+      }
+
+      if (error) {
+        console.error('[HTTP Debug BG] Error:', error.message || stderr);
+        return res.status(500).json({ error: error.message || stderr });
+      }
+
+      if (!fs.existsSync(tempOutPath)) {
+        return res.status(500).json({ error: 'Output file was not generated.' });
+      }
+
+      // Send the processed file and delete it after sending is done
+      res.sendFile(path.resolve(tempOutPath), {}, (sendErr) => {
+        try {
+          if (fs.existsSync(tempOutPath)) fs.unlinkSync(tempOutPath);
+        } catch (e) {
+          console.error('Error deleting temp output file:', e.message);
+        }
+      });
+    });
+  } catch (err) {
+    console.error('Error in /api/debug-bg-remove:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -199,6 +331,88 @@ app.get('/download/:sessionId/:filename', (req, res) => {
   const file = path.join(outputDir, req.params.sessionId, req.params.filename);
   res.download(file);
 });
+
+app.get('/api/debug-openai', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const isPlaceholder = !apiKey || apiKey.startsWith('sk-test-key') || apiKey === '';
+
+  // Check if local faster-whisper is installed
+  const hasLocalWhisper = await new Promise((resolve) => {
+    const { exec } = require('child_process');
+    const pythonPath = process.env.PYTHON_PATH || 'python';
+    exec(`"${pythonPath}" -c "import faster_whisper"`, (err) => {
+      resolve(!err);
+    });
+  });
+
+  if (isPlaceholder) {
+    if (hasLocalWhisper) {
+      return res.json({
+        status: 'placeholder',
+        message: 'Local Whisper (Offline)',
+        details: 'OpenAI API key is missing, but local Faster-Whisper is installed and active! Voice recognition will run 100% locally on your computer with real timestamps.'
+      });
+    } else {
+      return res.json({
+        status: 'placeholder',
+        message: 'Simulation (Offline Mode)',
+        details: 'OpenAI API key is missing. Run "pip install faster-whisper" in your terminal to enable high-fidelity local voice recognition offline.'
+      });
+    }
+  }
+
+  try {
+    const axios = require('axios');
+    // Call the lightweight models endpoint to test API key validity and network reachability
+    const response = await axios.get('https://api.openai.com/v1/models', {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      },
+      timeout: 8000 // 8s timeout
+    });
+
+    if (response.status === 200) {
+      return res.json({
+        status: 'active',
+        message: 'Active (Whisper Online)',
+        details: `Key is valid. OpenAI returned ${response.data.data ? response.data.data.length : 0} available models.`
+      });
+    }
+  } catch (error) {
+    let errMsg = error.message;
+    let details = 'Failed to connect to OpenAI endpoints.';
+    let is401 = false;
+
+    if (error.response) {
+      if (error.response.status === 401) {
+        is401 = true;
+        errMsg = 'Invalid API Key (401 Error)';
+        details = 'The API key provided was rejected by OpenAI (401 Unauthorized). Please check your credentials in .env.';
+      } else {
+        errMsg = `OpenAI returned status ${error.response.status}`;
+        details = JSON.stringify(error.response.data || {});
+      }
+    } else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      errMsg = 'Connection Timed Out';
+      details = 'Could not reach api.openai.com. Check your internet connection or firewall rules.';
+    }
+
+    if (hasLocalWhisper) {
+      errMsg += ' (Local Backup Active)';
+      details += ' [Note: Local Faster-Whisper is installed and will be used as a high-fidelity backup!]';
+    } else {
+      details += ' [Tip: Run "pip install faster-whisper" to enable high-fidelity local voice recognition when offline/error.]';
+    }
+
+    return res.json({
+      status: 'error',
+      message: errMsg,
+      details: details,
+      is401
+    });
+  }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
