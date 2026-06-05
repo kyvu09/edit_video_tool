@@ -223,7 +223,7 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
   let playResX = 1920;
   let playResY = 1080;
   let fontSize = 72;
-  let marginV = 80;
+  let marginV = 160; // Increased to move subtitles higher
   let outline = 4;
   let shadow = 2;
   let bold = 0;
@@ -235,7 +235,7 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
     playResX = 1080;
     playResY = 1920;
     fontSize = 48;
-    marginV = 70;
+    marginV = 140; // Increased to move subtitles higher
     outline = 3;
     shadow = 1;
     bold = 1;
