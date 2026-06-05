@@ -1,84 +1,90 @@
-# Edit Video Tool 🎬
+# Edit Video Tool 🎬 - Công Cụ Tạo Video Tự Động Từ AI
 
-An AI-powered video editor that automatically creates videos from images, audio, and scripts.
+Một công cụ tạo video mạnh mẽ được điều khiển bởi AI giúp tự động tạo video hoàn chỉnh từ hình ảnh, âm thanh (narrative audio) và kịch bản (script). Dự án đã tích hợp thành công **Thanh tiến độ thời gian thực (Real-time Progress Bar)** cho phép theo dõi chi tiết từng giai đoạn xử lý từ AI Whisper cho tới việc render video bằng FFmpeg.
 
-## Features
+## ✨ Tính Năng Nổi Bật
 
-✨ **Intelligent Scene Matching** - Automatically synchronizes images with audio using AI
-🎤 **Whisper AI Integration** - Extracts accurate timestamps from audio
-📝 **Smart Script Parsing** - Parses scene-based scripts automatically
-🎥 **FFmpeg Rendering** - Produces high-quality MP4 videos
-📋 **Auto-Subtitles** - Generates SRT subtitle files
-🎨 **Beautiful UI** - Modern, responsive web interface
+- 🎤 **Tích hợp Whisper AI** - Tự động nhận dạng giọng nói và trích xuất mốc thời gian chính xác từ file âm thanh.
+- 📝 **Phân tích Kịch Bản Thông Minh** - Tự động nhận diện các phân cảnh (scenes) và nội dung thoại.
+- 🎬 **Khớp Cảnh Thông Minh** - Đồng bộ hóa hình ảnh tải lên với mốc thời gian thoại tương ứng.
+- 📋 **Tự Động Tạo Phụ Đề** - Tạo file phụ đề chuẩn SRT chuyên nghiệp.
+- 🎥 **Bộ Render FFmpeg Đầy Đủ** - Ghép hình ảnh, âm thanh, và phụ đề thành video MP4 chất lượng cao.
+- ⏳ **Thanh Tiến Độ Thời Gian Thực (Mới)** - Hiển thị tiến độ render chi tiết (từng phân cảnh, ghép nhạc, chèn sub) thông qua cơ chế Polling API không đồng bộ.
+- 🎨 **Giao Diện Đẹp Mắt** - Giao diện Web hiện đại, dễ thao tác, hỗ trợ xem trước hình ảnh trước khi tạo.
 
-## Architecture
+## 📐 Kiến Trúc Hoạt Động
 
 ```
 AUDIO (MP3)
     ↓
-Whisper AI → Timestamps
+Whisper AI → Mốc thời gian (Timestamps)
     ↓
-SCRIPT (TXT) → Scene Mapper ← IMAGES (PNG/JPG)
+SCRIPT (TXT) → Bộ khớp phân cảnh ← HÌNH ẢNH (PNG/JPG)
     ↓
-Timeline Generator
+Tạo dòng thời gian (Timeline)
     ↓
-Subtitle Generator (SRT)
+Tạo Phụ đề (SRT)
     ↓
-FFmpeg Renderer
+Trình Render FFmpeg (Báo cáo tiến độ thời gian thực)
     ↓
-VIDEO (MP4)
+VIDEO CUỐI CÙNG (MP4)
 ```
 
-## Installation
+## 🛠️ Cài Đặt
 
-### Prerequisites
-- Node.js 16+
-- FFmpeg & FFprobe (ffmpeg.org)
-- OpenAI API Key (platform.openai.com)
+### Yêu Cầu Hệ Thống
+- **Node.js** phiên bản 16 trở lên
+- **FFmpeg & FFprobe** đã được cài đặt và thêm vào biến môi trường (PATH)
+- **OpenAI API Key** (Sử dụng cho mô hình Whisper-1)
 
-### Steps
+### Các Bước Cài Đặt
 
-1. **Clone and install**
-```bash
-cd editVideoTool
-npm install
-```
+1. **Cài đặt thư viện**
+   ```bash
+   cd editVideoTool
+   npm install
+   ```
 
-2. **Install FFmpeg** (if not already installed)
-```bash
-# Windows (using Chocolatey)
-choco install ffmpeg
+2. **Cài đặt FFmpeg** (Nếu chưa có)
+   - **Windows** (Qua Chocolatey): `choco install ffmpeg`
+   - **macOS** (Qua Homebrew): `brew install ffmpeg`
+   - **Linux** (Debian/Ubuntu): `sudo apt-get install ffmpeg`
 
-# macOS
-brew install ffmpeg
+3. **Cấu hình môi trường**
+   Sao chép file `.env.example` thành `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   Mở file `.env` lên và điền khóa OpenAI API:
+   ```env
+   OPENAI_API_KEY=sk-xxxxx...
+   ```
 
-# Linux
-sudo apt-get install ffmpeg
-```
+4. **Khởi chạy ứng dụng**
+   ```bash
+   npm start
+   ```
+   Ứng dụng sẽ chạy tại địa chỉ: [http://localhost:3000](http://localhost:3000)
 
-3. **Setup environment**
-```bash
-cp .env.example .env
-# Edit .env and add your OpenAI API key
-```
+## 📖 Hướng Dẫn Sử Dụng
 
-4. **Run the server**
-```bash
-npm start
-# Server runs on http://localhost:3000
-```
+1. Truy cập vào [http://localhost:3000](http://localhost:3000) trên trình duyệt.
+2. Tải lên các tệp tin yêu cầu:
+   - **Audio (MP3)**: File thu âm giọng đọc/thuyết minh.
+   - **Script (TXT)**: File kịch bản phân chia theo định dạng phân cảnh.
+   - **Images**: Chọn đồng thời tất cả các bức ảnh minh họa cho các phân cảnh.
+3. Nhấn nút **Create Video**.
+4. Hệ thống sẽ ngay lập tức kích hoạt tiến trình xử lý ngầm và hiển thị **thanh tiến độ thực tế**:
+   - 🎤 Đang trích xuất mốc thời gian từ giọng nói (Whisper)...
+   - 📝 Đang phân tích kịch bản...
+   - 🎬 Đang đồng bộ hóa timeline...
+   - 📋 Đang tạo phụ đề srt...
+   - 🎥 Đang render video từng cảnh (ví dụ: `Rendering scene 2 of 5...`), nối video, ghép phụ đề.
+5. Khi tiến độ đạt 100%, nhấn **Download Video** để tải video MP4 về máy.
 
-## Usage
-
-1. Open http://localhost:3000 in your browser
-2. Upload:
-   - **Audio**: MP3 file with narration
-   - **Script**: TXT file with SCENE format
-   - **Images**: PNG/JPG files (scene1.png, scene2.png, etc.)
-
-### Script Format
-
-```
+### Định Dạng File Kịch Bản (Script)
+Tạo tệp `.txt` với cấu trúc phân cảnh mẫu như sau:
+```text
 SCENE 1
 Người thành công không phải là người thông minh nhất,
 
@@ -88,150 +94,98 @@ mà là người nỗ lực nhiều nhất.
 SCENE 3
 Thông minh có thể giúp bạn bắt đầu nhanh hơn,
 ```
+*Lưu ý:* Hãy đặt tên file ảnh tương ứng là `scene1.png`, `scene2.png`, `scene3.jpg`... để bộ khớp phân cảnh hoạt động hoàn hảo nhất.
 
-3. Click "Create Video"
-4. Wait for processing (usually 2-5 minutes for a 1-minute video)
-5. Download the generated MP4 file
+## 🔌 Hệ Thống API mới
 
-## How It Works
+### 1. Kích Hoạt Tạo Video (Asynchronous)
+- **Endpoint:** `POST /api/upload`
+- **Body (Multipart Form-Data):**
+  - `audio`: File `.mp3`
+  - `script`: File `.txt`
+  - `images`: Tập hợp các tệp `.png`/`.jpg`
+- **Phản hồi mẫu (HTTP 202):**
+  ```json
+  {
+    "sessionId": "1717589632123",
+    "message": "Video creation started",
+    "statusUrl": "/api/progress/1717589632123"
+  }
+  ```
 
-### Step 1: Audio Processing
-- Whisper AI transcribes audio and extracts timestamps for each sentence
-- Returns segments with accurate start/end times
+### 2. Kiểm Tra Tiến Độ Thời Gian Thực (Polling)
+- **Endpoint:** `GET /api/progress/:sessionId`
+- **Phản hồi mẫu (HTTP 200 - Đang xử lý):**
+  ```json
+  {
+    "status": "processing",
+    "progress": 60,
+    "currentStep": "step-ffmpeg",
+    "statusMessage": "Rendering scene 2 of 5...",
+    "error": null,
+    "videoUrl": null
+  }
+  ```
+- **Phản hồi mẫu (HTTP 200 - Hoàn thành):**
+  ```json
+  {
+    "status": "completed",
+    "progress": 100,
+    "currentStep": "step-ffmpeg",
+    "statusMessage": "Video created successfully!",
+    "error": null,
+    "videoUrl": "/download/1717589632123/output.mp4"
+  }
+  ```
 
-### Step 2: Script Parsing
-- Reads the TXT script and extracts SCENE blocks
-- Maps each scene to corresponding text
+### 3. Tải Xuống Video Hoàn Thiện
+- **Endpoint:** `GET /download/:sessionId/:filename`
 
-### Step 3: Timeline Generation
-- Matches script text with audio transcription using similarity scoring
-- Creates timeline with images, timestamps, and durations
-
-### Step 4: Subtitle Creation
-- Generates SRT file with timestamps and transcribed text
-- Burned into the final video
-
-### Step 5: Video Rendering
-- FFmpeg combines:
-  - Images (with fade/zoom effects)
-  - Audio track
-  - Subtitles
-- Exports as H.264 MP4 video
-
-## Project Structure
-
+## 📂 Cấu Trúc Thư Mục Dự Án
 ```
 editVideoTool/
-├── server.js                 # Express server & main routes
+├── server.js                 # Express server & các endpoint API (Hỗ trợ xử lý bất đồng bộ)
 ├── src/
 │   └── services/
-│       ├── whisperService.js      # Whisper AI integration
-│       ├── scriptParser.js         # Script text parser
-│       ├── timelineGenerator.js    # Scene-timestamp mapping
-│       ├── subtitleGenerator.js    # SRT file creation
-│       └── ffmpegRenderer.js       # FFmpeg video rendering
+│       ├── whisperService.js      # Tích hợp OpenAI Whisper API
+│       ├── scriptParser.js         # Phân tích nội dung kịch bản
+│       ├── timelineGenerator.js    # Khớp hình ảnh với giọng đọc
+│       ├── subtitleGenerator.js    # Tạo phụ đề chuẩn SRT
+│       └── ffmpegRenderer.js       # Render video qua FFmpeg (Hỗ trợ callback tiến độ)
 ├── public/
-│   ├── index.html            # Main UI
-│   ├── style.css             # Styling
-│   └── app.js                # Frontend logic
-├── uploads/                  # Temp uploaded files
-├── output/                   # Generated videos
+│   ├── index.html            # Giao diện người dùng
+│   ├── style.css             # Định dạng giao diện
+│   └── app.js                # Logic Frontend (Xử lý Polling nhận dữ liệu thời gian thực)
+├── uploads/                  # Thư mục tạm chứa file tải lên
+├── output/                   # Thư mục chứa các session video hoàn thành
 ├── package.json
-└── .env                      # Environment variables
+└── .env                      # Các biến môi trường cấu hình ứng dụng
 ```
 
-## API Endpoints
+## 📝 Khắc Phục Sự Cố
 
-### POST /api/upload
-Upload files and create video
-
-**Request:**
-```
-Form data:
-- audio (file): MP3 audio file
-- script (file): TXT script file
-- images (files): PNG/JPG image files
+### Lỗi Không Tìm Thấy FFmpeg
+Nếu hệ thống báo lỗi không thể khởi chạy FFmpeg, bạn hãy cài đặt đường dẫn trực tiếp trong `.env`:
+```env
+FFMPEG_PATH=C:\ffmpeg\bin\ffmpeg.exe
+FFPROBE_PATH=C:\ffmpeg\bin\ffprobe.exe
 ```
 
-**Response:**
-```json
-{
-  "sessionId": "1234567890",
-  "message": "Video created successfully",
-  "videoUrl": "/download/1234567890/output.mp4"
-}
-```
+### Lỗi Whisper API
+- Kiểm tra lại biến `OPENAI_API_KEY` trong file `.env`.
+- Hãy chắc chắn tài khoản OpenAI của bạn còn đủ số dư và không bị giới hạn định mức (billing limit).
+- File âm thanh tải lên nên nhỏ hơn 25MB.
 
-### GET /download/:sessionId/:filename
-Download generated video
+## 🗺️ Kế Hoạch Phát Triển (Roadmap)
 
-## Environment Variables
+- [x] Thanh tiến độ xử lý thực tế (Polling API & Callbacks)
+- [ ] Các hiệu ứng chuyển cảnh đẹp mắt (Zoom, fade, pan)
+- [ ] Hỗ trợ đa ngôn ngữ
+- [ ] Tự động trộn nhạc nền theo sở thích
+- [ ] Giao diện quản lý thư viện các video đã tạo
 
-```
-OPENAI_API_KEY     # Your OpenAI API key (required)
-PORT               # Server port (default: 3000)
-FFMPEG_PATH        # Path to ffmpeg binary (default: ffmpeg)
-FFPROBE_PATH       # Path to ffprobe binary (default: ffprobe)
-```
-
-## Performance Tips
-
-1. **Image Preparation**
-   - Use 1920x1080 PNG/JPG images
-   - Keep images 500KB-1MB each
-   - Number images to match scenes (scene1.png, scene2.png...)
-
-2. **Script Tips**
-   - Keep sentences short (5-8 words)
-   - Match script text closely with audio narration
-   - Use clear "SCENE" headers
-
-3. **Audio Tips**
-   - Use clear narration
-   - Consistent audio level
-   - No background music (will be mixed with video)
-
-## Troubleshooting
-
-### FFmpeg Not Found
-```bash
-# Set full path in .env
-FFMPEG_PATH=/usr/bin/ffmpeg
-FFPROBE_PATH=/usr/bin/ffprobe
-```
-
-### Whisper API Errors
-- Verify OPENAI_API_KEY in .env
-- Check OpenAI quota and billing
-- Audio file should be < 25MB
-
-### Video Rendering Issues
-- Ensure all images exist
-- Check FFmpeg installation
-- Try with smaller test images first
-
-## Roadmap
-
-- [ ] WebSocket progress updates
-- [ ] Video effects (zoom, fade, pan)
-- [ ] Multi-language support
-- [ ] Music/background audio mixing
-- [ ] Video templates
-- [ ] Batch processing
-- [ ] Cloud storage integration
-
-## License
-
-MIT
-
-## Contributing
-
-Pull requests welcome!
-
-## Support
-
-For issues and questions, please open an GitHub issue.
+## 📄 Bản Quyền
+Dự án được phân phối dưới giấy phép **MIT**.
 
 ---
-
-**Made with ❤️ using Whisper AI & FFmpeg**
+**Được xây dựng với ❤️ bằng cách kết hợp OpenAI Whisper & FFmpeg!**
