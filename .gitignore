@@ -7,4 +7,5 @@ uploads/*
 output/*
 !output/.gitkeep
 
-.env.example
+.env.example/uploads/*
+!/uploads/.gitkeep
