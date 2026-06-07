@@ -195,27 +195,31 @@ function chunkTimeline(timeline, wordTimestamps, maxChars = 40) {
   return newTimeline;
 }
 
-// ── Karaoke word builder for a specific word chunk ───────────────────────────
-function buildKaraokeTextForChunk(chunkWords, chunkStart) {
-  if (!chunkWords || chunkWords.length === 0) return null;
+// ── Helper to retrieve or simulate word-level timestamps ────────────────────
+function getOrCreateWords(item) {
+  if (item.words && item.words.length > 0) {
+    return item.words;
+  }
 
-  let karaokeText = '';
-  let lastEnd = chunkStart;
+  // Fallback: split text into words and simulate timestamps
+  const wordsList = String(item.text).trim().split(/\s+/).filter(Boolean);
+  if (wordsList.length === 0) return [];
 
-  chunkWords.forEach(word => {
-    const delay = Math.max(0, word.start - lastEnd);
-    const delayCs = Math.round(delay * 100);
-    const durationCs = Math.max(1, Math.round((word.end - word.start) * 100));
+  const totalChars = wordsList.reduce((sum, w) => sum + w.length, 0);
+  const duration = item.end - item.start;
+  let currentStart = item.start;
 
-    if (delayCs > 0) {
-      karaokeText += `{\\kf${delayCs}} `;
-    }
-
-    karaokeText += `{\\kf${durationCs}}${escapeASS(word.word)} `;
-    lastEnd = word.end;
+  return wordsList.map((word) => {
+    const wordDuration = totalChars > 0 ? (word.length / totalChars) * duration : 0;
+    const wordStart = currentStart;
+    const wordEnd = currentStart + wordDuration;
+    currentStart = wordEnd;
+    return {
+      word,
+      start: wordStart,
+      end: wordEnd
+    };
   });
-
-  return karaokeText.trim();
 }
 
 // ── generateASS ───────────────────────────────────────────────────────────────
@@ -266,23 +270,75 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   let events = '';
 
   chunked.forEach((item) => {
-    const start = formatASS(item.start);
-    const end = formatASS(item.end);
-    const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
-    
-    // Zoom-out tag: starts at zoomScale% and scales down to 100% over the exact duration
-    const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
+    const words = getOrCreateWords(item);
 
-    let text;
-    const karaokeText = item.words ? buildKaraokeTextForChunk(item.words, item.start) : null;
+    if (words.length > 0) {
+      words.forEach((wordObj, i) => {
+        const eventStart = i === 0 ? item.start : wordObj.start;
+        const eventEnd = i === words.length - 1 ? item.end : words[i + 1].start;
+        
+        // Ensure positive duration and prevent overlap issues
+        const duration = Math.max(0.05, eventEnd - eventStart);
+        const start = formatASS(eventStart);
+        const end = formatASS(eventStart + duration);
 
-    if (karaokeText) {
-      text = `${anim}${karaokeText}`;
+        const chunkDur = item.end - item.start;
+        const progress = chunkDur > 0 ? (eventStart - item.start) / chunkDur : 0;
+        const currentScale = zoomScale - (zoomScale - 100) * progress;
+        
+        const startOffset = Math.round((item.start - eventStart) * 1000);
+        const endOffset = Math.round((item.end - eventStart) * 1000);
+        
+        const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOffset},${endOffset},\\fscx100\\fscy100)}`;
+
+        // Consistent word-wrap per chunk
+        const lines = [];
+        let currentLine = [];
+        let currentLength = 0;
+
+        words.forEach((w, idx) => {
+          const spaceNeeded = currentLine.length > 0 ? 1 : 0;
+          if (currentLength + spaceNeeded + w.word.length > maxCharsPerLine) {
+            if (currentLine.length > 0) {
+              lines.push(currentLine);
+              currentLine = [{ word: w.word, index: idx }];
+              currentLength = w.word.length;
+            } else {
+              lines.push([{ word: w.word, index: idx }]);
+              currentLine = [];
+              currentLength = 0;
+            }
+          } else {
+            currentLine.push({ word: w.word, index: idx });
+            currentLength += spaceNeeded + w.word.length;
+          }
+        });
+        if (currentLine.length > 0) {
+          lines.push(currentLine);
+        }
+
+        const formattedLines = lines.map(line => {
+          return line.map(wItem => {
+            const escWord = escapeASS(wItem.word);
+            if (wItem.index === i) {
+              return `{\\c&H0000D7FF&\\b1}${escWord}{\\c&H00FFFFFF&\\b${bold}}`;
+            }
+            return escWord;
+          }).join(' ');
+        });
+
+        const text = `${anim}${formattedLines.join('\\N')}`;
+        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
+      });
     } else {
-      text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
+      // Fallback in case of empty text/words
+      const start = formatASS(item.start);
+      const end = formatASS(item.end);
+      const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
+      const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
+      const text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
+      events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
     }
-
-    events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
   });
 
   fs.writeFileSync(outputPath, header + events, { encoding: 'utf8' });
