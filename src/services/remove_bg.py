@@ -113,8 +113,13 @@ def composite(fg_nobg, bg_path, aspect_ratio="16:9"):
     """Resize bg to canvas size, scale fg proportionally, centre and paste."""
     if aspect_ratio == "9:16":
         canvas_w, canvas_h = 1080, 1920
-
-    target_h = int(canvas_h * 0.55)
+        target_h = int(canvas_h * 0.55)
+        safe_zone_bottom = 350
+    else:
+        # Default to 16:9
+        canvas_w, canvas_h = 1920, 1080
+        target_h = int(canvas_h * 0.70)
+        safe_zone_bottom = 150
 
     bg_img = Image.open(bg_path).resize(
         (canvas_w, canvas_h),
@@ -140,13 +145,10 @@ def composite(fg_nobg, bg_path, aspect_ratio="16:9"):
         )
 
     paste_x = (canvas_w - fg_resized.width) // 2
-
-    SAFE_ZONE_BOTTOM = 350
-
     paste_y = (
         canvas_h
         - fg_resized.height
-        - SAFE_ZONE_BOTTOM
+        - safe_zone_bottom
     )
 
     bg_img.paste(fg_resized, (paste_x, paste_y), fg_resized)

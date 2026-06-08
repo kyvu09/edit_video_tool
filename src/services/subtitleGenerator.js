@@ -226,14 +226,18 @@ function getOrCreateWords(item) {
 function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = '16:9') {
   let playResX = 1920;
   let playResY = 1080;
-  let fontSize = 72;
-  let marginV = 160; // Increased to move subtitles higher
+  let fontSize = 48;
+  let marginV = 50; // Increased to move subtitles higher
   let outline = 4;
   let shadow = 2;
   let bold = 0;
-  let maxChars = 80;        // max chars per subtitle chunk
-  let maxCharsPerLine = 42; // max chars per visible line in ASS
-  let zoomScale = 115;
+  //customize test
+  // let outline = 3;
+  // let  shadow = 1;
+  // let  bold = 1;
+  let maxChars = 120;        // max chars per subtitle chunk
+  let maxCharsPerLine = 62; // max chars per visible line in ASS
+  let zoomScale = 112;
 
   if (aspectRatio === '9:16') {
     playResX = 1080;
