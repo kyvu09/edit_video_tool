@@ -77,6 +77,7 @@ function generateTimeline(scenes, timestamps, imageFiles) {
     timeline[0].start = 0;
   }
 
+  // First pass: define start and end for all items
   for (let i = 0; i < timeline.length; i++) {
     const item = timeline[i];
 
@@ -101,6 +102,19 @@ function generateTimeline(scenes, timestamps, imageFiles) {
         item.end = item.start + (remaining > 0 ? remaining / undefinedCount : 2);
       }
     }
+  }
+
+  // Second pass: close gaps by extending the end time of each scene to the start of the next scene.
+  // This ensures there are no visual gaps/black frames and matches audio duration perfectly.
+  for (let i = 0; i < timeline.length - 1; i++) {
+    if (timeline[i].end < timeline[i + 1].start) {
+      timeline[i].end = timeline[i + 1].start;
+    }
+  }
+
+  // Third pass: resolve overlaps, enforce minimum duration and round
+  for (let i = 0; i < timeline.length; i++) {
+    const item = timeline[i];
 
     // Enforce strictly increasing order – no overlaps allowed
     if (i > 0 && item.start < timeline[i - 1].end) {

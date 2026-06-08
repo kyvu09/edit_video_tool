@@ -104,9 +104,6 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     const timeline = timelineGenerator.generateTimeline(scenes, timestamps, images);
     sessions[sessionId].progress = 50;
 
-    // Extract word timestamps attached by whisperService
-    const wordTimestamps = timestamps._wordTimestamps || null;
-
     // Step 4: Generate subtitles
     console.log(`[Session ${sessionId}] Step 4: Generating subtitles...`);
     sessions[sessionId].currentStep = 'step-subtitle';
@@ -114,7 +111,7 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].statusMessage = 'Creating subtitle track...';
     
     const assPath = path.join(sessionDir, 'subtitle.ass');
-    subtitleGenerator.generateASS(timeline, assPath, wordTimestamps, aspectRatio);
+    subtitleGenerator.generateASS(timeline, assPath, null, aspectRatio);
     sessions[sessionId].progress = 55;
 
     // Step 5: Render video

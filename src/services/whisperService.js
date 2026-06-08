@@ -113,9 +113,7 @@ async function processAudio(audioPath, sceneTexts = []) {
   form.append('file',   fs.createReadStream(audioPath));
   form.append('model',  'whisper-1');
   form.append('response_format', 'verbose_json');
-  // Request word-level timestamps for karaoke highlighting
   form.append('timestamp_granularities[]', 'segment');
-  form.append('timestamp_granularities[]', 'word');
 
   try {
     const response = await axios.post(
@@ -137,15 +135,8 @@ async function processAudio(audioPath, sceneTexts = []) {
       end:   Math.round(s.end   * 100) / 100
     }));
 
-    // Parse word-level timestamps returned by OpenAI (verbose_json with word granularity)
-    const rawWords = response.data.words || [];
-    segments._wordTimestamps = rawWords.length > 0
-      ? rawWords.map(w => ({
-          word:  w.word.trim(),
-          start: Math.round(w.start * 100) / 100,
-          end:   Math.round(w.end   * 100) / 100
-        }))
-      : null;
+    // Word-level timestamps removed
+    segments._wordTimestamps = null;
 
     return segments;
 

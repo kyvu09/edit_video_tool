@@ -26,11 +26,11 @@ function escapeASS(text) {
     .replace(/\}/g, '\\}');
 }
 
-// ── Keyword Emphasis ─────────────────────────────────────────────────────────
-// Highlights ALL-CAPS sequences of 3+ ASCII letters in gold + bold.
+// ── Nhấn mạnh từ khóa ─────────────────────────────────────────────────────────
+// In đậm các chuỗi VIẾT HOA có từ 3 chữ cái ASCII trở lên (sử dụng màu trắng &H00FFFFFF&)
 function applyKeywordEmphasis(text) {
   return text.replace(/\b[A-Z]{3,}\b/g, (match) => {
-    return `{\\c&H0000D7FF&\\b1}${match}{\\c&H00FFFFFF&\\b0}`;
+    return `{\\c&H00FFFFFF&\\b1}${match}{\\c&H00FFFFFF&\\b0}`;
   });
 }
 
@@ -243,7 +243,7 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
     outline = 3;
     shadow = 1;
     bold = 1;
-    maxChars = 60;        // max chars per subtitle chunk
+    maxChars =64;        // max chars per subtitle chunk
     maxCharsPerLine = 32; // max chars per visible line in ASS
     zoomScale = 112;
   }
@@ -270,75 +270,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   let events = '';
 
   chunked.forEach((item) => {
-    const words = getOrCreateWords(item);
-
-    if (words.length > 0) {
-      words.forEach((wordObj, i) => {
-        const eventStart = i === 0 ? item.start : wordObj.start;
-        const eventEnd = i === words.length - 1 ? item.end : words[i + 1].start;
-        
-        // Ensure positive duration and prevent overlap issues
-        const duration = Math.max(0.05, eventEnd - eventStart);
-        const start = formatASS(eventStart);
-        const end = formatASS(eventStart + duration);
-
-        const chunkDur = item.end - item.start;
-        const progress = chunkDur > 0 ? (eventStart - item.start) / chunkDur : 0;
-        const currentScale = zoomScale - (zoomScale - 100) * progress;
-        
-        const startOffset = Math.round((item.start - eventStart) * 1000);
-        const endOffset = Math.round((item.end - eventStart) * 1000);
-        
-        const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOffset},${endOffset},\\fscx100\\fscy100)}`;
-
-        // Consistent word-wrap per chunk
-        const lines = [];
-        let currentLine = [];
-        let currentLength = 0;
-
-        words.forEach((w, idx) => {
-          const spaceNeeded = currentLine.length > 0 ? 1 : 0;
-          if (currentLength + spaceNeeded + w.word.length > maxCharsPerLine) {
-            if (currentLine.length > 0) {
-              lines.push(currentLine);
-              currentLine = [{ word: w.word, index: idx }];
-              currentLength = w.word.length;
-            } else {
-              lines.push([{ word: w.word, index: idx }]);
-              currentLine = [];
-              currentLength = 0;
-            }
-          } else {
-            currentLine.push({ word: w.word, index: idx });
-            currentLength += spaceNeeded + w.word.length;
-          }
-        });
-        if (currentLine.length > 0) {
-          lines.push(currentLine);
-        }
-
-        const formattedLines = lines.map(line => {
-          return line.map(wItem => {
-            const escWord = escapeASS(wItem.word);
-            if (wItem.index === i) {
-              return `{\\c&H0000D7FF&\\b1}${escWord}{\\c&H00FFFFFF&\\b${bold}}`;
-            }
-            return escWord;
-          }).join(' ');
-        });
-
-        const text = `${anim}${formattedLines.join('\\N')}`;
-        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
-      });
-    } else {
-      // Fallback in case of empty text/words
-      const start = formatASS(item.start);
-      const end = formatASS(item.end);
-      const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
-      const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
-      const text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
-      events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
-    }
+    const start = formatASS(item.start);
+    const end = formatASS(item.end);
+    const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
+    const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
+    const text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
+    events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
   });
 
   fs.writeFileSync(outputPath, header + events, { encoding: 'utf8' });
