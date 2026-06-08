@@ -273,10 +273,75 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const words = getOrCreateWords(item);
 
     if (words.length > 0) {
-      words.forEach((wordObj, i) => {
-        const eventStart = i === 0 ? item.start : wordObj.start;
-        const eventEnd = i === words.length - 1 ? item.end : words[i + 1].start;
-        
+      // 1. Generate a timeline of contiguous segments covering [item.start, item.end]
+      const segments = [];
+      let currentTime = item.start;
+
+      words.forEach((wordObj, idx) => {
+        // If there is a silence/gap of at least 50ms before the word
+        if (wordObj.start > currentTime) {
+          const gapDuration = wordObj.start - currentTime;
+          if (gapDuration >= 0.05) {
+            // Silence segment (highlightIndex = -1)
+            segments.push({
+              start: currentTime,
+              end: wordObj.start,
+              highlightIndex: -1
+            });
+            // Word segment (highlightIndex = idx)
+            segments.push({
+              start: wordObj.start,
+              end: wordObj.end,
+              highlightIndex: idx
+            });
+          } else {
+            // Short gap, merge it into the word segment
+            segments.push({
+              start: currentTime,
+              end: wordObj.end,
+              highlightIndex: idx
+            });
+          }
+        } else {
+          // Overlapping/adjacent word, enforce sequential start time
+          const start = Math.max(currentTime, wordObj.start);
+          const end = Math.max(start, wordObj.end);
+          if (end > start) {
+            segments.push({
+              start,
+              end,
+              highlightIndex: idx
+            });
+          }
+        }
+        if (segments.length > 0) {
+          currentTime = segments[segments.length - 1].end;
+        } else {
+          currentTime = wordObj.end;
+        }
+      });
+
+      // Gap after the last word
+      if (item.end > currentTime) {
+        const gapDuration = item.end - currentTime;
+        if (gapDuration >= 0.05) {
+          segments.push({
+            start: currentTime,
+            end: item.end,
+            highlightIndex: -1
+          });
+        } else {
+          // Extend last segment to item.end
+          if (segments.length > 0) {
+            segments[segments.length - 1].end = item.end;
+          }
+        }
+      }
+
+      // 2. Generate a dialogue event for each segment
+      segments.forEach((seg) => {
+        const eventStart = seg.start;
+        const eventEnd = seg.end;
         // Ensure positive duration and prevent overlap issues
         const duration = Math.max(0.05, eventEnd - eventStart);
         const start = formatASS(eventStart);
@@ -285,10 +350,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         const chunkDur = item.end - item.start;
         const progress = chunkDur > 0 ? (eventStart - item.start) / chunkDur : 0;
         const currentScale = zoomScale - (zoomScale - 100) * progress;
-        
+
         const startOffset = Math.round((item.start - eventStart) * 1000);
         const endOffset = Math.round((item.end - eventStart) * 1000);
-        
+
         const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOffset},${endOffset},\\fscx100\\fscy100)}`;
 
         // Consistent word-wrap per chunk
@@ -320,7 +385,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         const formattedLines = lines.map(line => {
           return line.map(wItem => {
             const escWord = escapeASS(wItem.word);
-            if (wItem.index === i) {
+            if (wItem.index === seg.highlightIndex) {
               return `{\\c&H0000D7FF&\\b1}${escWord}{\\c&H00FFFFFF&\\b${bold}}`;
             }
             return escWord;

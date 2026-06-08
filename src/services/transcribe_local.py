@@ -2,6 +2,13 @@ import sys
 import json
 import os
 
+# Configure sys.stdout to use UTF-8 encoding to prevent encoding errors on Windows
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+else:
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 try:
     from faster_whisper import WhisperModel
 except ImportError:
