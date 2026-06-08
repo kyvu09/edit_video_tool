@@ -43,7 +43,7 @@ async function callGemini(systemInstruction, userPrompt) {
     headers: {
       'Content-Type': 'application/json'
     },
-    timeout: 30000 // 30s timeout
+    timeout: 300000 // 5 phut timeout (increased to handle longer generations/congestions)
   });
 
   const candidates = response.data && response.data.candidates;
