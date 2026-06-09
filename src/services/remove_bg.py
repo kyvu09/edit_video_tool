@@ -3,7 +3,7 @@ import os
 import numpy as np
 from PIL import Image, ImageFilter
 from rembg import remove
-from scipy.ndimage import binary_erosion, gaussian_filter
+from scipy.ndimage import binary_erosion, gaussian_filter, maximum_filter
 
 
 # ─────────────────────────────────────────────
@@ -13,37 +13,55 @@ from scipy.ndimage import binary_erosion, gaussian_filter
 def clean_white_background(img, threshold=215.0, edge_blur=1.2):
     """
     Remove a white/near-white background using Color-to-Alpha keying.
-
-    Improvements over original:
-    - Alpha is computed from the MAX channel (not min), which is more
-      correct for "how white is this pixel".
-    - Edge smoothing via gaussian blur on the alpha mask to kill halo.
-    - Un-multiplication is done with the blurred alpha so colours stay clean.
-
-    Args:
-        img        : PIL Image (any mode)
-        threshold  : Pixels whose max-channel value is below this are kept
-                     fully opaque (preserves dark lines/details).
-        edge_blur  : Gaussian sigma applied to the alpha mask for soft edges.
-                     0 = no blur. 1-2 is a good range.
+    Includes adaptive illumination correction to clean up scanned/shadowed paper backgrounds.
     """
-    img = img.convert("RGBA")
-    data = np.array(img, dtype=np.float32)
-    r, g, b = data[:, :, 0], data[:, :, 1], data[:, :, 2]
+    # ── Step 1: Illumination Correction (Flatten shadows/gradients) ──
+    # Convert image to grayscale to estimate background illumination
+    img_gray = img.convert("L")
+    data_gray = np.array(img_gray, dtype=np.float32)
+    
+    # Estimate background using a maximum filter (removes dark line drawings)
+    max_dim = max(img.width, img.height)
+    kernel_size = int(max_dim * 0.05)
+    if kernel_size % 2 == 0:
+        kernel_size += 1
+    kernel_size = max(21, kernel_size)
+    
+    bg_est = maximum_filter(data_gray, size=kernel_size)
+    bg_est = gaussian_filter(bg_est, sigma=kernel_size / 2.0)
+    bg_safe = np.maximum(bg_est, 1.0)
+    
+    # Divide original image by background estimate to normalize illumination to white
+    img_rgba = img.convert("RGBA")
+    data_rgba = np.array(img_rgba, dtype=np.float32)
+    r, g, b = data_rgba[:, :, 0], data_rgba[:, :, 1], data_rgba[:, :, 2]
+    
+    # Correct RGB channels
+    r_corr = np.clip((r / bg_safe) * 255.0, 0.0, 255.0)
+    g_corr = np.clip((g / bg_safe) * 255.0, 0.0, 255.0)
+    b_corr = np.clip((b / bg_safe) * 255.0, 0.0, 255.0)
+    
+    # ── Step 2: Two-Threshold Min-RGB Keying ──
+    # Use MIN channel so saturated colors are protected
+    min_rgb = np.minimum(np.minimum(r_corr, g_corr), b_corr)
 
-    # Use MAX channel — a pixel is "white" when all channels are high.
-    # Original code used MIN which can misfire on bright-coloured pixels.
-    max_rgb = np.maximum(np.maximum(r, g), b)
+    low_threshold = threshold
+    high_threshold = min(255.0, low_threshold + 10.0)
 
-    # Alpha ramp: below threshold → opaque, above → fade to transparent
+    # Alpha ramp: below low_threshold -> opaque, above high_threshold -> transparent,
+    # in-between -> smooth transition
     alpha = np.where(
-        max_rgb < threshold,
+        min_rgb < low_threshold,
         255.0,
-        255.0 * (255.0 - max_rgb) / (255.0 - threshold + 1e-5)
+        np.where(
+            min_rgb >= high_threshold,
+            0.0,
+            255.0 * (high_threshold - min_rgb) / (high_threshold - low_threshold + 1e-5)
+        )
     )
     alpha = np.clip(alpha, 0.0, 255.0)
 
-    # ── Smooth the alpha mask to soften hard edges (kills most halo) ──
+    # Smooth the alpha mask
     if edge_blur > 0:
         alpha = gaussian_filter(alpha, sigma=edge_blur)
         alpha = np.clip(alpha, 0.0, 255.0)
@@ -51,11 +69,10 @@ def clean_white_background(img, threshold=215.0, edge_blur=1.2):
     alpha_norm      = alpha / 255.0
     alpha_norm_safe = np.maximum(alpha_norm, 1e-5)
 
-    # Un-multiply: recover the "true" foreground colour by subtracting
-    # the white background's contribution proportional to transparency.
-    new_r = np.clip((r - 255.0 * (1.0 - alpha_norm)) / alpha_norm_safe, 0, 255)
-    new_g = np.clip((g - 255.0 * (1.0 - alpha_norm)) / alpha_norm_safe, 0, 255)
-    new_b = np.clip((b - 255.0 * (1.0 - alpha_norm)) / alpha_norm_safe, 0, 255)
+    # Un-multiply using the corrected channels
+    new_r = np.clip((r_corr - 255.0 * (1.0 - alpha_norm)) / alpha_norm_safe, 0, 255)
+    new_g = np.clip((g_corr - 255.0 * (1.0 - alpha_norm)) / alpha_norm_safe, 0, 255)
+    new_b = np.clip((b_corr - 255.0 * (1.0 - alpha_norm)) / alpha_norm_safe, 0, 255)
 
     new_data = np.stack([new_r, new_g, new_b, alpha], axis=-1).astype(np.uint8)
     return Image.fromarray(new_data, "RGBA")
