@@ -47,21 +47,59 @@ function buildSceneFilter(duration, aspectRatio = '16:9', fps = 30) {
   ].join(',');
 }
 
-// ── Main render function ──────────────────────────────────────────────────────
-async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspectRatio = '16:9', bgmPath = null, bgmVolume = 0.3, onProgress) {
-  if (typeof aspectRatio === 'function') {
-    onProgress = aspectRatio;
-    aspectRatio = '16:9';
-    bgmPath = null;
-    bgmVolume = 0.3;
-  } else if (typeof bgmPath === 'function') {
-    onProgress = bgmPath;
-    bgmPath = null;
-    bgmVolume = 0.3;
-  } else if (typeof bgmVolume === 'function') {
-    onProgress = bgmVolume;
-    bgmVolume = 0.3;
+// Helper to construct chained atempo filters for any speed range
+function getAtempoFilter(speed) {
+  if (speed === 1.0) return 'atempo=1.0';
+  const filters = [];
+  let tempSpeed = speed;
+  while (tempSpeed > 2.0) {
+    filters.push('atempo=2.0');
+    tempSpeed /= 2.0;
   }
+  while (tempSpeed < 0.5) {
+    filters.push('atempo=0.5');
+    tempSpeed /= 0.5;
+  }
+  if (tempSpeed !== 1.0) {
+    filters.push(`atempo=${tempSpeed.toFixed(4)}`);
+  }
+  return filters.join(',');
+}
+
+// ── Main render function ──────────────────────────────────────────────────────
+async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspectRatio = '16:9', bgmPath = null, bgmVolume = 0.3, speed = 1.0, onProgress) {
+  // Gracefully handle dynamic arguments to keep backward compatibility
+  let finalAspectRatio = aspectRatio;
+  let finalBgmPath = bgmPath;
+  let finalBgmVolume = bgmVolume;
+  let finalSpeed = speed;
+  let finalOnProgress = onProgress;
+
+  if (typeof finalAspectRatio === 'function') {
+    finalOnProgress = finalAspectRatio;
+    finalAspectRatio = '16:9';
+    finalBgmPath = null;
+    finalBgmVolume = 0.3;
+    finalSpeed = 1.0;
+  } else if (typeof finalBgmPath === 'function') {
+    finalOnProgress = finalBgmPath;
+    finalBgmPath = null;
+    finalBgmVolume = 0.3;
+    finalSpeed = 1.0;
+  } else if (typeof finalBgmVolume === 'function') {
+    finalOnProgress = finalBgmVolume;
+    finalBgmVolume = 0.3;
+    finalSpeed = 1.0;
+  } else if (typeof finalSpeed === 'function') {
+    finalOnProgress = finalSpeed;
+    finalSpeed = 1.0;
+  }
+
+  const speedVal = parseFloat(finalSpeed) || 1.0;
+  onProgress = finalOnProgress;
+  aspectRatio = finalAspectRatio;
+  bgmPath = finalBgmPath;
+  bgmVolume = finalBgmVolume;
 
   if (!timeline || timeline.length === 0) {
     throw new Error('Empty timeline');
@@ -117,7 +155,12 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
 
     if (bgmPath && fs.existsSync(bgmPath)) {
       audioInputArgs = `-stream_loop -1 -i "${bgmPath}"`;
-      filterComplexArgs = `-filter_complex "[1:a]volume=1.0[vover];[2:a]volume=${bgmVolume}[bgm];[vover][bgm]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]"`;
+      const voiceoverAtempo = getAtempoFilter(speedVal);
+      filterComplexArgs = `-filter_complex "[1:a]${voiceoverAtempo},volume=1.0[vover];[2:a]volume=${bgmVolume}[bgm];[vover][bgm]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]"`;
+      audioMapArgs = `-map 0:v:0 -map "[a]"`;
+    } else if (speedVal !== 1.0) {
+      const voiceoverAtempo = getAtempoFilter(speedVal);
+      filterComplexArgs = `-filter_complex "[1:a]${voiceoverAtempo}[a]"`;
       audioMapArgs = `-map 0:v:0 -map "[a]"`;
     } else {
       audioMapArgs = `-map 0:v:0 -map 1:a:0`;

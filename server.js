@@ -23,7 +23,7 @@ const app = express();
 // In-memory store for session progress
 const sessions = {};
 
-async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9', bgmVolume = 30) {
+async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9', bgmVolume = 30, videoSpeed = 1.0) {
   try {
     const { audio, script, images, backgroundImage, bgm } = files;
     const audioPath = audio[0].path;
@@ -102,6 +102,17 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].statusMessage = 'Generating matching scene timeline...';
     
     const timeline = timelineGenerator.generateTimeline(scenes, timestamps, images);
+    
+    // Scale timeline according to video speed
+    if (videoSpeed && videoSpeed !== 1.0) {
+      console.log(`[Session ${sessionId}] Scaling timeline by speed ${videoSpeed}x...`);
+      timeline.forEach(item => {
+        item.start = Math.round((item.start / videoSpeed) * 100) / 100;
+        item.end = Math.round((item.end / videoSpeed) * 100) / 100;
+        item.duration = Math.round((item.duration / videoSpeed) * 100) / 100;
+      });
+    }
+
     sessions[sessionId].progress = 50;
 
     // Step 4: Generate subtitles
@@ -120,7 +131,7 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].statusMessage = 'Rendering final video with FFmpeg...';
     
     const outputPath = path.join(sessionDir, 'output.mp4');
-    await ffmpegRenderer.renderVideo(timeline, audioPath, assPath, outputPath, aspectRatio, bgmPath, bgmVolume / 100, (ffmpegProgress) => {
+    await ffmpegRenderer.renderVideo(timeline, audioPath, assPath, outputPath, aspectRatio, bgmPath, bgmVolume / 100, videoSpeed, (ffmpegProgress) => {
       if (ffmpegProgress.step === 'rendering_scene') {
         const percent = Math.round((ffmpegProgress.current / ffmpegProgress.total) * 35); // scales from 0 to 35% (from 55% to 90%)
         sessions[sessionId].progress = 55 + percent;
@@ -179,6 +190,7 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     const backgroundMode = req.body.backgroundMode || 'whitekey';
     const aspectRatio = req.body.aspectRatio || '16:9';
     const bgmVolume = req.body.bgmVolume !== undefined ? parseFloat(req.body.bgmVolume) : 30;
+    const videoSpeed = req.body.videoSpeed !== undefined ? parseFloat(req.body.videoSpeed) : 1.0;
 
     if (audioFiles.length === 0 || scriptFiles.length === 0 || imageFiles.length === 0) {
       return res.status(400).json({ error: 'Missing required files: audio, script, or images' });
@@ -206,7 +218,7 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     };
 
     // Start background processing
-    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio, bgmVolume);
+    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio, bgmVolume, videoSpeed);
 
     res.status(202).json({
       sessionId,

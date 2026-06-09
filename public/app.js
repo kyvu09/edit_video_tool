@@ -152,6 +152,14 @@ if (bgmVolumeInput && bgmVolumeValText) {
     });
 }
 
+const videoSpeedInput = document.getElementById('videoSpeed');
+const videoSpeedValText = document.getElementById('videoSpeedValText');
+if (videoSpeedInput && videoSpeedValText) {
+    videoSpeedInput.addEventListener('input', (e) => {
+        videoSpeedValText.textContent = `${parseFloat(e.target.value).toFixed(2)}x`;
+    });
+}
+
 
 // Form submission
 form.addEventListener('submit', async (e) => {
@@ -179,6 +187,9 @@ form.addEventListener('submit', async (e) => {
 
     const aspectRatio = document.getElementById('aspectRatio').value;
     formData.append('aspectRatio', aspectRatio);
+
+    const videoSpeed = document.getElementById('videoSpeed') ? document.getElementById('videoSpeed').value : '1.0';
+    formData.append('videoSpeed', videoSpeed);
     
     // Background music & volume submission (No Icons)
     const bgmFile = document.getElementById('bgm').files[0];
