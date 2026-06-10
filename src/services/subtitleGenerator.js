@@ -472,14 +472,14 @@ function getOrCreateWords(item) {
 function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = '16:9') {
   let playResX = 1920;
   let playResY = 1080;
-  let fontSize = 72;
-  let marginV = 160; // Increased to move subtitles higher
+  let fontSize = 48;
+  let marginV = 50; // Increased to move subtitles higher
   let outline = 4;
   let shadow = 2;
   let bold = 0;
-  let maxChars = 80;        // max chars per subtitle chunk
-  let maxCharsPerLine = 42; // max chars per visible line in ASS
-  let zoomScale = 115;
+  let maxChars = 60;        // max chars per subtitle chunk (fit on 1 line)
+  let maxCharsPerLine = 60; // prevent line wrapping
+  let zoomScale = 105;
 
   if (aspectRatio === '9:16') {
     playResX = 1080;
@@ -489,9 +489,9 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
     outline = 3;
     shadow = 1;
     bold = 1;
-    maxChars = 60;        // max chars per subtitle chunk
-    maxCharsPerLine = 32; // max chars per visible line in ASS
-    zoomScale = 112;
+    maxChars = 32;        // fit on 1 line for portrait
+    maxCharsPerLine = 32; // prevent line wrapping
+    zoomScale = 105;
   }
 
   const header = `[Script Info]

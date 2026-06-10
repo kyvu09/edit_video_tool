@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -66,6 +66,18 @@
                     </div>
 
                     <div class="form-section">
+                        <div class="image-uploader-container">
+                            <div class="upload-trigger" id="uploadTrigger">
+                                <span class="icon"></span>
+                                <span>Add Scene Images</span>
+                                <p class="upload-hint">Click to add scene images sequentially</p>
+                                <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
+                            </div>
+                            <div id="imagePreview" class="image-preview"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
                         <label for="backgroundImage">
                             <span class="icon"></span>
                             Background Image (Optional - Auto-Overlay Foreground)
@@ -128,17 +140,7 @@
                         </div>
                     </div>
 
-                    <div class="form-section">
-                        <div class="image-uploader-container">
-                            <div class="upload-trigger" id="uploadTrigger">
-                                <span class="icon"></span>
-                                <span>Add Scene Images</span>
-                                <p class="upload-hint">Click to add scene images sequentially</p>
-                                <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
-                            </div>
-                            <div id="imagePreview" class="image-preview"></div>
-                        </div>
-                    </div>
+                    
 
                     <button type="submit" class="btn-submit">Create Video</button>
                 </form>
