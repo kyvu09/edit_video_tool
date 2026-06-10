@@ -24,6 +24,12 @@ const app = express();
 const sessions = {};
 
 async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9', bgmVolume = 30, videoSpeed = 1.0) {
+  const timeout = setTimeout(() => {
+    console.error(`[Session ${sessionId}] ⏱️ Processing timeout (>12 hours)`);
+    sessions[sessionId].status = 'failed';
+    sessions[sessionId].statusMessage = 'Processing timeout - operation took too long';
+  }, 12 * 60 * 60 * 1000); // 12 hours timeout
+
   try {
     const { audio, script, images, backgroundImage, bgm } = files;
     const audioPath = audio[0].path;
@@ -103,6 +109,9 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     
     const timeline = timelineGenerator.generateTimeline(scenes, timestamps, images);
     
+    // Extract word timestamps
+    let wordTimestamps = timestamps._wordTimestamps || null;
+
     // Scale timeline according to video speed
     if (videoSpeed && videoSpeed !== 1.0) {
       console.log(`[Session ${sessionId}] Scaling timeline by speed ${videoSpeed}x...`);
@@ -111,6 +120,14 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
         item.end = Math.round((item.end / videoSpeed) * 100) / 100;
         item.duration = Math.round((item.duration / videoSpeed) * 100) / 100;
       });
+
+      if (wordTimestamps) {
+        wordTimestamps = wordTimestamps.map(w => ({
+          ...w,
+          start: w.start / videoSpeed,
+          end: w.end / videoSpeed
+        }));
+      }
     }
 
     sessions[sessionId].progress = 50;
@@ -122,7 +139,7 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].statusMessage = 'Creating subtitle track...';
     
     const assPath = path.join(sessionDir, 'subtitle.ass');
-    subtitleGenerator.generateASS(timeline, assPath, null, aspectRatio);
+    subtitleGenerator.generateASS(timeline, assPath, wordTimestamps, aspectRatio);
     sessions[sessionId].progress = 55;
 
     // Step 5: Render video
@@ -156,6 +173,8 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].status = 'failed';
     sessions[sessionId].error = error.message;
     sessions[sessionId].statusMessage = `Error: ${error.message}`;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -218,7 +237,12 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     };
 
     // Start background processing
-    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio, bgmVolume, videoSpeed);
+    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio, bgmVolume, videoSpeed)
+      .catch((err) => {
+        console.error(`[Session ${sessionId}] Unhandled error in background processing:`, err);
+        sessions[sessionId].status = 'failed';
+        sessions[sessionId].statusMessage = `Error: ${err.message}`;
+      });
 
     res.status(202).json({
       sessionId,
@@ -483,6 +507,25 @@ app.get('/api/debug-gemini', async (req, res) => {
 
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
+});
+
+// Global error handlers to prevent server crash
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Optionally restart or log to external service
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('📍 SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
 });

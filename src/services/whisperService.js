@@ -114,6 +114,13 @@ async function processAudio(audioPath, sceneTexts = []) {
   form.append('model',  'whisper-1');
   form.append('response_format', 'verbose_json');
   form.append('timestamp_granularities[]', 'segment');
+  form.append('timestamp_granularities[]', 'word');
+
+  // Provide the script text as a prompt to guide Whisper's spelling and vocabulary
+  if (sceneTexts && sceneTexts.length > 0) {
+    const promptText = sceneTexts.join(' ').substring(0, 1000);
+    form.append('prompt', promptText);
+  }
 
   try {
     const response = await axios.post(
