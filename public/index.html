@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -157,11 +157,38 @@
                         </label>
                         <textarea id="rawScriptText" placeholder="Ví dụ: Người thành công không phải là người thông minh nhất, mà là người nỗ lực nhiều nhất. Hãy luôn kiên trì vượt qua khó khăn nhé..." rows="6" class="custom-textarea"></textarea>
                     </div>
-                    <button id="btnGenerateScenes" type="button" class="btn-submit" style="width: 100%; margin-top: 15px;"> Tạo Phân Cảnh Bằng Gemini AI</button>
+                    <div style="display: flex; gap: 12px; margin-top: 15px;">
+                        <button id="btnGenerateScenes" type="button" class="btn-submit" style="flex: 1;"> Tạo Phân Cảnh Bằng Gemini AI</button>
+                        <button id="btnGenerateMetadata" type="button" class="btn-submit" style="flex: 1; background-color: #8b5cf6;"> Tự Động Viết Tiêu Đề & Mô Tả</button>
+                    </div>
 
                     <div id="aiProgress" class="ai-progress" style="display: none;">
                         <div class="spinner" style="margin: 0 auto 10px auto; width: 24px; height: 24px;"></div>
                         <p id="aiProgressText">Đang phân tích kịch bản thô...</p>
+                    </div>
+
+                    <div id="aiMetadataProgress" class="ai-progress" style="display: none; margin-top: 15px;">
+                        <div class="spinner" style="margin: 0 auto 10px auto; width: 24px; height: 24px;"></div>
+                        <p id="aiMetadataProgressText">Đang viết tiêu đề & mô tả...</p>
+                    </div>
+
+                    <div id="aiMetadataResults" class="ai-results" style="display: none; margin-top: 24px;">
+                        <div class="form-section" style="margin-top: 20px;">
+                            <h3> Video Metadata (Cho YouTube / TikTok)</h3>
+                            <p class="upload-hint" style="margin-bottom: 8px;">Dùng để dán trực tiếp lên các nền tảng mạng xã hội</p>
+                            
+                            <label style="margin-bottom: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Tiêu đề:</label>
+                            <div class="textarea-container" style="position: relative; margin-bottom: 15px;">
+                                <input type="text" id="aiMetadataTitle" readonly class="custom-textarea readonly-textarea" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;">
+                                <button id="btnCopyTitle" type="button" class="btn-copy" style="top: 10px;"> Sao chép</button>
+                            </div>
+
+                            <label style="margin-bottom: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Mô tả & Hashtags:</label>
+                            <div class="textarea-container">
+                                <textarea id="aiMetadataDesc" readonly rows="6" class="custom-textarea readonly-textarea"></textarea>
+                                <button id="btnCopyDesc" type="button" class="btn-copy"> Sao chép</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="aiResults" class="ai-results" style="display: none; margin-top: 24px;">
@@ -256,6 +283,44 @@
                 <div class="success-actions">
                     <a id="downloadLink" href="#" class="btn-download"> Download Video</a>
                     <button onclick="location.reload()" class="btn-secondary-action"> Create Another</button>
+                </div>
+
+                <!-- YouTube Upload Section -->
+                <div id="youtubeUploadSection" class="form-section" style="margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; text-align: left;">
+                    <h3> Upload to YouTube</h3>
+                    <div id="youtubeAuthSection">
+                        <p class="upload-hint">Kết nối tài khoản YouTube để đăng video trực tiếp.</p>
+                        <button id="btnYoutubeConnect" type="button" class="btn-secondary-action" style="background-color: #ef4444; border-color: #ef4444;"> Kết nối YouTube</button>
+                    </div>
+                    
+                    <div id="youtubeFormSection" style="display: none; margin-top: 15px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                            <p class="upload-hint" style="color: #10b981; margin: 0;">✅ Đã kết nối YouTube</p>
+                            <button id="btnYoutubeLogout" type="button" class="btn-secondary-action" style="padding: 4px 10px; font-size: 0.8em; margin: 0; border-color: rgba(255,255,255,0.2);">Đăng xuất</button>
+                        </div>
+                        <label style="margin-top: 10px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Tiêu đề:</label>
+                        <input type="text" id="ytTitle" class="custom-textarea" style="width: 100%; padding: 12px; margin-bottom: 10px;">
+                        
+                        <label style="margin-top: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Mô tả:</label>
+                        <textarea id="ytDescription" rows="4" class="custom-textarea" style="width: 100%; margin-bottom: 10px;"></textarea>
+                        
+                        <label style="margin-top: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Tags (cách nhau bằng dấu phẩy):</label>
+                        <input type="text" id="ytTags" class="custom-textarea" style="width: 100%; padding: 12px; margin-bottom: 10px;">
+
+                        <label style="margin-top: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Trạng thái:</label>
+                        <select id="ytPrivacy" class="custom-textarea" style="width: 100%; padding: 12px; margin-bottom: 15px; background: rgba(255,255,255,0.05); color: white;">
+                            <option value="private">Riêng tư (Private)</option>
+                            <option value="unlisted">Không công khai (Unlisted)</option>
+                            <option value="public">Công khai (Public)</option>
+                        </select>
+
+                        <button id="btnYoutubeUpload" type="button" class="btn-submit" style="width: 100%; background-color: #ef4444;"> Tải lên YouTube</button>
+                        
+                        <div id="ytUploadProgress" style="display: none; margin-top: 15px; text-align: center;">
+                            <div class="spinner" style="margin: 0 auto 10px auto; width: 24px; height: 24px;"></div>
+                            <p id="ytUploadStatus">Đang tải lên...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 

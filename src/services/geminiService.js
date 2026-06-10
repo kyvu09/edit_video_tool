@@ -5,6 +5,7 @@ const axios = require('axios');
 const PROMPT_DIR = path.resolve(__dirname, '..', '..', 'prompt');
 const PROMPT_CREATE_PATH = path.join(PROMPT_DIR, 'prompt-create-scenes.md');
 const PROMPT_SEPARATE_PATH = path.join(PROMPT_DIR, 'prompt-separate-scenes.md');
+const PROMPT_METADATA_PATH = path.join(PROMPT_DIR, 'video-metadata.md');
 
 /**
  * Call the Gemini API via Axios REST request
@@ -29,15 +30,18 @@ async function callGemini(systemInstruction, userPrompt) {
           }
         ]
       }
-    ],
-    systemInstruction: {
+    ]
+  };
+
+  if (systemInstruction) {
+    payload.systemInstruction = {
       parts: [
         {
           text: systemInstruction
         }
       ]
-    }
-  };
+    };
+  }
 
   const response = await axios.post(url, payload, {
     headers: {
@@ -95,4 +99,24 @@ async function generateScenes(rawScriptText) {
   };
 }
 
-module.exports = { generateScenes };
+async function generateVideoMetadata(rawScriptText) {
+  if (!rawScriptText || rawScriptText.trim() === '') {
+    throw new Error('Script text cannot be empty.');
+  }
+
+  let metadataPrompt = '';
+  try {
+    metadataPrompt = fs.readFileSync(PROMPT_METADATA_PATH, 'utf8');
+  } catch (err) {
+    throw new Error(`Failed to read prompt file at ${PROMPT_METADATA_PATH}: ${err.message}`);
+  }
+
+  const finalPrompt = metadataPrompt.replace('{{SCRIPT}}', rawScriptText);
+
+  console.log('[Gemini Service] Generating video metadata...');
+  const metadataOutput = await callGemini('', finalPrompt);
+
+  return metadataOutput;
+}
+
+module.exports = { generateScenes, generateVideoMetadata };

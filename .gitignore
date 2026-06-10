@@ -9,3 +9,7 @@ output/*
 
 .env.example/uploads/*
 !/uploads/.gitkeep
+
+# Ignore tokens and sensitive config
+config/youtube-token.json
+*.json.tmp

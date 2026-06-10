@@ -16,6 +16,7 @@ const subtitleGenerator = require('./src/services/subtitleGenerator');
 const ffmpegRenderer = require('./src/services/ffmpegRenderer');
 const bgRemovalService = require('./src/services/bgRemovalService');
 const geminiService = require('./src/services/geminiService');
+const youtubeService = require('./src/services/youtubeService');
 
 
 const app = express();
@@ -71,6 +72,22 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     const scriptContent = fs.readFileSync(scriptPath, 'utf-8');
     const scenes = scriptParser.parseScript(scriptContent);
     const sceneTexts = scenes.map(s => s.text);
+
+    // Auto-generate YouTube metadata in the background
+    sessions[sessionId].metadata = null;
+    geminiService.generateVideoMetadata(scriptContent).then(result => {
+        try {
+            const cleanedStr = result.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanedStr);
+            sessions[sessionId].metadata = parsed;
+            console.log(`[Session ${sessionId}] YouTube metadata auto-generated via AI.`);
+        } catch (e) {
+            console.warn(`[Session ${sessionId}] Failed to parse auto metadata as JSON`, e);
+            sessions[sessionId].metadata = { title: "AI Generated Video", description: result };
+        }
+    }).catch(err => {
+        console.error(`[Session ${sessionId}] Gemini auto-metadata generation failed:`, err);
+    });
 
     // Step 1: Extract timestamps from audio
     console.log(`[Session ${sessionId}] Step 1: Extracting timestamps...`);
@@ -271,6 +288,108 @@ app.post('/api/generate-scenes', async (req, res) => {
   }
 });
 
+// Endpoint to generate video metadata via Gemini
+app.post('/api/generate-metadata', async (req, res) => {
+  try {
+    const { rawScriptText } = req.body;
+    if (!rawScriptText || rawScriptText.trim() === '') {
+      return res.status(400).json({ error: 'Script text cannot be empty.' });
+    }
+
+    const result = await geminiService.generateVideoMetadata(rawScriptText);
+    
+    try {
+      // Try to parse the result as JSON
+      const cleanedStr = result.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanedStr);
+      res.json(parsed);
+    } catch (e) {
+      console.warn('Failed to parse metadata as JSON, returning raw text', e);
+      res.json({ rawText: result });
+    }
+  } catch (error) {
+    console.error('Error in /api/generate-metadata:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- YouTube API Endpoints ---
+app.get('/api/youtube/auth', (req, res) => {
+  try {
+    const url = youtubeService.getAuthUrl();
+    res.json({ url });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/oauth2callback', async (req, res) => {
+  const code = req.query.code;
+  if (!code) {
+    return res.status(400).send('Missing code parameter');
+  }
+  try {
+    await youtubeService.handleCallback(code);
+    res.send(`
+      <script>
+        if (window.opener) {
+          window.opener.postMessage('youtube_auth_success', '*');
+          window.close();
+        } else {
+          window.location.href = '/';
+        }
+      </script>
+    `);
+  } catch (err) {
+    console.error('OAuth Callback Error:', err);
+    res.status(500).send('Authentication failed: ' + err.message);
+  }
+});
+
+app.get('/api/youtube/status', (req, res) => {
+  try {
+    const isAuthenticated = youtubeService.checkAuthStatus();
+    res.json({ authenticated: isAuthenticated });
+  } catch (error) {
+    res.json({ authenticated: false, error: error.message });
+  }
+});
+
+app.post('/api/youtube/logout', (req, res) => {
+  try {
+    youtubeService.logout();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/youtube/upload', async (req, res) => {
+  try {
+    const { sessionId, title, description, tags, privacyStatus } = req.body;
+    if (!sessionId || !title) {
+      return res.status(400).json({ error: 'Missing required parameters (sessionId, title)' });
+    }
+    
+    const videoPath = path.join(outputDir, sessionId, 'output.mp4');
+    if (!fs.existsSync(videoPath)) {
+      return res.status(404).json({ error: 'Video file not found for session ' + sessionId });
+    }
+
+    const result = await youtubeService.uploadVideo(videoPath, {
+      title,
+      description,
+      tags,
+      privacyStatus
+    });
+
+    res.json({ success: true, videoId: result.id });
+  } catch (err) {
+    console.error('YouTube Upload Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+// ------------------------------
 
 // Standalone endpoint for background removal debugging (returns binary image)
 app.post('/api/debug-bg-remove', upload.any(), async (req, res) => {

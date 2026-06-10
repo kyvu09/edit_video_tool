@@ -310,6 +310,10 @@ function trackProgress(sessionId) {
                         videoPlayer.src = data.previewUrl;
                         videoPlayer.load();
                     }
+                    
+                    if (typeof initYoutubeSection === 'function') {
+                        initYoutubeSection(sessionId, data.metadata);
+                    }
                 }, 800);
             } else if (data.status === 'failed') {
                 clearInterval(interval);
@@ -321,6 +325,142 @@ function trackProgress(sessionId) {
             console.error('Polling error:', error);
         }
     }, 1000);
+}
+
+// --- YouTube Integration ---
+function initYoutubeSection(sessionId, metadata) {
+    const authSection = document.getElementById('youtubeAuthSection');
+    const formSection = document.getElementById('youtubeFormSection');
+    const btnConnect = document.getElementById('btnYoutubeConnect');
+    
+    const ytTitle = document.getElementById('ytTitle');
+    const ytDesc = document.getElementById('ytDescription');
+    const ytTags = document.getElementById('ytTags');
+    const btnUpload = document.getElementById('btnYoutubeUpload');
+    const uploadProgress = document.getElementById('ytUploadProgress');
+    const uploadStatus = document.getElementById('ytUploadStatus');
+    const btnLogout = document.getElementById('btnYoutubeLogout');
+
+    // Pre-fill metadata if available
+    if (metadata) {
+        if (metadata.title) ytTitle.value = metadata.title;
+        
+        let descText = metadata.description || '';
+        if (metadata.hashtags && metadata.hashtags.length > 0) {
+            descText += '\n\n' + metadata.hashtags.join(' ');
+        }
+        if (metadata.seo_keywords && metadata.seo_keywords.length > 0) {
+            descText += '\n\nTừ khóa SEO: ' + metadata.seo_keywords.join(', ');
+        }
+        ytDesc.value = descText.trim();
+
+        if (metadata.seo_keywords && Array.isArray(metadata.seo_keywords)) {
+            ytTags.value = metadata.seo_keywords.join(', ');
+        } else if (metadata.tags) {
+             ytTags.value = Array.isArray(metadata.tags) ? metadata.tags.join(', ') : metadata.tags;
+        }
+    }
+
+    async function checkAuth() {
+        try {
+            const res = await fetch('/api/youtube/status');
+            const data = await res.json();
+            if (data.authenticated) {
+                authSection.style.display = 'none';
+                formSection.style.display = 'block';
+            } else {
+                authSection.style.display = 'block';
+                formSection.style.display = 'none';
+            }
+        } catch (e) {
+            console.error('Failed to check YT auth status', e);
+        }
+    }
+
+    checkAuth();
+
+    // Prevent multiple event listeners by replacing the button clone
+    const newBtnConnect = btnConnect.cloneNode(true);
+    btnConnect.parentNode.replaceChild(newBtnConnect, btnConnect);
+    newBtnConnect.addEventListener('click', async () => {
+        try {
+            const res = await fetch('/api/youtube/auth');
+            const data = await res.json();
+            if (data.url) {
+                // Open popup
+                const w = 500;
+                const h = 600;
+                const left = (screen.width/2)-(w/2);
+                const top = (screen.height/2)-(h/2);
+                window.open(data.url, 'YouTubeLogin', 'width='+w+',height='+h+',top='+top+',left='+left);
+            }
+        } catch (e) {
+            alert('Lỗi lấy link đăng nhập: ' + e.message);
+        }
+    });
+
+    if (btnLogout) {
+        const newBtnLogout = btnLogout.cloneNode(true);
+        btnLogout.parentNode.replaceChild(newBtnLogout, btnLogout);
+        newBtnLogout.addEventListener('click', async () => {
+            try {
+                await fetch('/api/youtube/logout', { method: 'POST' });
+                checkAuth();
+                alert('Đã đăng xuất khỏi YouTube thành công.');
+            } catch (e) {
+                console.error('Logout error', e);
+            }
+        });
+    }
+
+    // We only want to add this listener once globally, but for simplicity we can just add it. 
+    // It's safe since it just calls checkAuth().
+    window.addEventListener('message', (event) => {
+        if (event.data === 'youtube_auth_success') {
+            checkAuth();
+        }
+    });
+
+    const newBtnUpload = btnUpload.cloneNode(true);
+    btnUpload.parentNode.replaceChild(newBtnUpload, btnUpload);
+    newBtnUpload.addEventListener('click', async () => {
+        const title = ytTitle.value.trim();
+        if (!title) {
+            alert('Vui lòng nhập tiêu đề video');
+            return;
+        }
+
+        newBtnUpload.disabled = true;
+        uploadProgress.style.display = 'block';
+        uploadStatus.textContent = 'Đang tải lên YouTube... Xin đừng đóng trang';
+
+        try {
+            const payload = {
+                sessionId: sessionId,
+                title: title,
+                description: ytDesc.value.trim(),
+                tags: ytTags.value.trim(),
+                privacyStatus: document.getElementById('ytPrivacy').value
+            };
+
+            const res = await fetch('/api/youtube/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                uploadStatus.innerHTML = `✅ Thành công! Xem video tại: <a href="https://youtu.be/${data.videoId}" target="_blank" style="color:#a5b4fc;">https://youtu.be/${data.videoId}</a>`;
+            } else {
+                throw new Error(data.error || 'Lỗi không xác định');
+            }
+        } catch (e) {
+            alert('Upload thất bại: ' + e.message);
+            uploadProgress.style.display = 'none';
+            newBtnUpload.disabled = false;
+        }
+    });
 }
 
 // --- OpenAI API Debug Tooling ---
@@ -534,7 +674,86 @@ function initAIAssistant() {
     const btnApplyScript = document.getElementById('btnApplyScript');
     const btnDownloadScript = document.getElementById('btnDownloadScriptText');
 
+    const btnGenerateMetadata = document.getElementById('btnGenerateMetadata');
+    const aiMetadataProgress = document.getElementById('aiMetadataProgress');
+    const aiMetadataResults = document.getElementById('aiMetadataResults');
+    const txtMetadataTitle = document.getElementById('aiMetadataTitle');
+    const txtMetadataDesc = document.getElementById('aiMetadataDesc');
+    const btnCopyTitle = document.getElementById('btnCopyTitle');
+    const btnCopyDesc = document.getElementById('btnCopyDesc');
+
     if (!btnGenerate) return;
+
+    if (btnGenerateMetadata) {
+        btnGenerateMetadata.addEventListener('click', async () => {
+            const rawText = txtRawScript.value.trim();
+            if (!rawText) {
+                alert('Vui lòng nhập kịch bản thô của bạn trước khi tạo tiêu đề & mô tả.');
+                return;
+            }
+
+            btnGenerateMetadata.disabled = true;
+            aiMetadataProgress.style.display = 'block';
+            aiMetadataResults.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/generate-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rawScriptText: rawText })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'Lỗi từ API Gemini');
+                }
+
+                const data = await response.json();
+                
+                if (data.rawText) {
+                     // Fallback to raw text if JSON parse failed
+                     txtMetadataTitle.value = 'Lỗi phân tích JSON từ AI. Vui lòng xem ở dưới.';
+                     txtMetadataDesc.value = data.rawText;
+                } else {
+                     txtMetadataTitle.value = data.title || '';
+                     
+                     let descText = data.description || '';
+                     if (data.hashtags && data.hashtags.length > 0) {
+                         descText += '\n\n' + data.hashtags.join(' ');
+                     }
+                     if (data.seo_keywords && data.seo_keywords.length > 0) {
+                         descText += '\n\nTừ khóa SEO: ' + data.seo_keywords.join(', ');
+                     }
+                     txtMetadataDesc.value = descText;
+                }
+
+                aiMetadataProgress.style.display = 'none';
+                aiMetadataResults.style.display = 'block';
+            } catch (error) {
+                console.error('Metadata Generation Error:', error);
+                alert('Không thể tạo tiêu đề & mô tả: ' + error.message);
+                aiMetadataProgress.style.display = 'none';
+            } finally {
+                btnGenerateMetadata.disabled = false;
+            }
+        });
+
+        btnCopyTitle.addEventListener('click', () => {
+            txtMetadataTitle.select();
+            navigator.clipboard.writeText(txtMetadataTitle.value);
+            const origText = btnCopyTitle.textContent;
+            btnCopyTitle.textContent = '✅ Đã chép!';
+            setTimeout(() => btnCopyTitle.textContent = origText, 2000);
+        });
+
+        btnCopyDesc.addEventListener('click', () => {
+            txtMetadataDesc.select();
+            navigator.clipboard.writeText(txtMetadataDesc.value);
+            const origText = btnCopyDesc.textContent;
+            btnCopyDesc.textContent = '✅ Đã chép!';
+            setTimeout(() => btnCopyDesc.textContent = origText, 2000);
+        });
+    }
 
     btnGenerate.addEventListener('click', async () => {
         const rawText = txtRawScript.value.trim();
