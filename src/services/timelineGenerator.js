@@ -112,6 +112,42 @@ function generateTimeline(scenes, timestamps, imageFiles) {
     }
   }
 
+  // Second pass B: Enforce minimum duration by stealing time from adjacent scenes
+  const MIN_SCENE_DUR = 2.0;
+  for (let i = 0; i < timeline.length; i++) {
+    let dur = timeline[i].end - timeline[i].start;
+    if (dur < MIN_SCENE_DUR) {
+      let needed = MIN_SCENE_DUR - dur;
+      
+      // 1. Try to steal from the next scene
+      if (i < timeline.length - 1) {
+        let nextDur = timeline[i + 1].end - timeline[i + 1].start;
+        if (nextDur > MIN_SCENE_DUR) {
+          let steal = Math.min(needed, nextDur - MIN_SCENE_DUR);
+          timeline[i].end += steal;
+          timeline[i + 1].start += steal;
+          needed -= steal;
+        }
+      }
+      
+      // 2. Try to steal from the previous scene
+      if (needed > 0 && i > 0) {
+        let prevDur = timeline[i - 1].end - timeline[i - 1].start;
+        if (prevDur > MIN_SCENE_DUR) {
+          let steal = Math.min(needed, prevDur - MIN_SCENE_DUR);
+          timeline[i].start -= steal;
+          timeline[i - 1].end -= steal;
+          needed -= steal;
+        }
+      }
+      
+      // 3. Force it (will be handled by overlap resolution)
+      if (needed > 0) {
+        timeline[i].end += needed;
+      }
+    }
+  }
+
   // Third pass: resolve overlaps, enforce minimum duration and round
   for (let i = 0; i < timeline.length; i++) {
     const item = timeline[i];
@@ -121,9 +157,9 @@ function generateTimeline(scenes, timestamps, imageFiles) {
       item.start = timeline[i - 1].end;
     }
 
-    // Enforce minimum scene duration of 0.5s
-    if (item.end <= item.start) {
-      item.end = item.start + 0.5;
+    // Fallback minimum scene duration
+    if (item.end - item.start < MIN_SCENE_DUR) {
+      item.end = item.start + MIN_SCENE_DUR;
     }
 
     item.start = Math.round(item.start * 100) / 100;
@@ -134,7 +170,8 @@ function generateTimeline(scenes, timestamps, imageFiles) {
   // ── Step 4: Snap last scene to exact end of audio ─────────────────────────
   if (timeline.length > 0) {
     const last = timeline[timeline.length - 1];
-    last.end = Math.round(totalDuration * 100) / 100;
+    let candidateEnd = Math.max(totalDuration, last.start + MIN_SCENE_DUR);
+    last.end = Math.round(candidateEnd * 100) / 100;
     last.duration = Math.round((last.end - last.start) * 100) / 100;
   }
 
