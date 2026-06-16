@@ -477,8 +477,8 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
   let outline = 4;
   let shadow = 2;
   let bold = 0;
-  let maxChars = 60;        // max chars per subtitle chunk (fit on 1 line)
-  let maxCharsPerLine = 60; // prevent line wrapping
+  let maxChars = 70;        // max chars per subtitle chunk (fit on 1 line)
+  let maxCharsPerLine = 70; // prevent line wrapping
   let zoomScale = 105;
 
   if (aspectRatio === '9:16') {

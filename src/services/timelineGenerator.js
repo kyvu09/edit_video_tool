@@ -6,7 +6,32 @@ function generateTimeline(scenes, timestamps, imageFiles) {
   if (!scenes || scenes.length === 0) return [];
   if (!timestamps || timestamps.length === 0) return [];
 
-  // ── Step 1: Assign each timestamp segment to scenes using Dynamic Programming ──────
+  // ── Step 1: Flatten timestamps into words for high-resolution matching ──────
+  // If Whisper outputs long sentences as single segments, DP forces the whole sentence
+  // into one scene. Splitting by words ensures DP can cut exactly where it needs to.
+  const flatWords = [];
+  timestamps.forEach(seg => {
+    const words = seg.text.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return;
+    
+    const totalChars = words.reduce((sum, w) => sum + w.length, 0);
+    const segDur = seg.end - seg.start;
+    
+    let currentStart = seg.start;
+    words.forEach(w => {
+      const weight = w.length / totalChars;
+      const wordDur = segDur * weight;
+      flatWords.push({
+        text: w,
+        start: currentStart,
+        end: currentStart + wordDur
+      });
+      currentStart += wordDur;
+    });
+  });
+  timestamps = flatWords;
+
+  // ── Step 1b: Assign each word segment to scenes using Dynamic Programming ──────
   // This guarantees monotonic (chronological) ordering of segments across scenes.
   const N = timestamps.length;
   const K = scenes.length;
@@ -23,7 +48,8 @@ function generateTimeline(scenes, timestamps, imageFiles) {
       let bestJ = i;
       
       let chunkText = "";
-      for (let j = i - 1; j >= 0; j--) {
+      // Limit inner loop to max 150 words per scene to keep performance high
+      for (let j = i - 1; j >= Math.max(0, i - 150); j--) {
         chunkText = chunkText === "" ? timestamps[j].text : timestamps[j].text + " " + chunkText;
         if (dp[k - 1][j] === -Infinity) continue;
         
@@ -113,7 +139,7 @@ function generateTimeline(scenes, timestamps, imageFiles) {
   }
 
   // Second pass B: Enforce minimum duration by stealing time from adjacent scenes
-  const MIN_SCENE_DUR = 2.0;
+  const MIN_SCENE_DUR = 2;
   for (let i = 0; i < timeline.length; i++) {
     let dur = timeline[i].end - timeline[i].start;
     if (dur < MIN_SCENE_DUR) {
