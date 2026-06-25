@@ -94,31 +94,31 @@ These elements should support the story, not clutter the image.
 
 THUMBNAIL TEXT
 
-Include a short thumbnail headline.
+Include a short thumbnail headline when it improves click-through rate.
 
 Requirements:
 
-* 1 to 5 words maximum
-* extremely easy to read
-* emotionally powerful
-* creates curiosity
-* large bold lettering
-* integrated naturally into the composition
-* readable on mobile screens
-* use impactful wording instead of full sentences
+1 to 5 words maximum
+extremely easy to read
+emotionally powerful
+creates curiosity
+large bold lettering
+integrated naturally into the composition
+readable on mobile screens
+use impactful wording instead of full sentences
 
 Examples:
 
-* TOO LATE
-* BIG MISTAKE
-* DON'T QUIT
-* NOBODY CARES
-* WAKE UP
-* START NOW
-* WHY?
-* THE TRUTH
-* ONE DECISION
-* NEVER AGAIN
+QUÁ MUỘN
+SAI LẦM LỚN
+ĐỪNG BỎ CUỘC
+CHẲNG AI QUAN TÂM
+TỈNH LẠI ĐI
+BẮT ĐẦU NGAY
+TẠI SAO?
+SỰ THẬT
+MỘT QUYẾT ĐỊNH
+KHÔNG BAO GIỜ NỮA
 
 THUMBNAIL STYLE
 
@@ -164,6 +164,67 @@ Negative Prompt:
 * blurry elements
 * tiny characters
 * weak emotions
+
+──────────────────────────────
+IMAGE TEXT LANGUAGE RULE
+
+This rule applies to ALL generated images, including:
+
+thumbnails
+scene illustrations
+signs
+labels
+warning symbols
+books
+notes
+posters
+speech bubbles
+phone screens
+computer screens
+charts
+documents
+UI elements
+any visible text inside the image
+
+If visible text appears inside an image, it MUST be written in Vietnamese.
+
+Image prompts may be written in English for better image generation quality, but every visible word shown inside the generated image must be Vietnamese.
+
+Examples:
+
+Correct:
+
+"ĐỪNG TỰ DỐI!"
+"BẮT ĐẦU NGAY"
+"QUÁ MUỘN"
+"5 PHÚT NỮA"
+"NGÀY MAI"
+
+Incorrect:
+
+"STOP LYING!"
+"START NOW"
+"TOO LATE"
+"5 MORE MINUTES"
+"TOMORROW"
+
+When generating image prompts:
+
+If text is not important to the scene, do not include text.
+If text improves storytelling, emotion, clarity, or humor, include Vietnamese text.
+Never use English text inside the generated image.
+
+──────────────────────────────
+
+Replace this rule:
+
+"There is no text in the image."
+
+With:
+
+Avoid unnecessary text.
+Only include text when it significantly improves storytelling, emotion, clarity, humor, or viewer understanding.
+Any visible text must be written in Vietnamese.
 
 ──────────────────────────────
 
@@ -240,7 +301,6 @@ SCENE REQUIREMENTS
 * No shadow effects.
 * No vignette.
 * No watermark.
-* No text.
 * No logo.
 
 ──────────────────────────────
