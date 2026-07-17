@@ -233,13 +233,13 @@ def main():
             result.save(out_path, format="PNG")
         else:
             fg_nobg.save(out_path, format="PNG")
-        print(f"Saved → {out_path}")
+        print(f"Saved -> {out_path}")
     except Exception as e:
         print(f"Error saving output: {e}")
         # Fallback: try saving transparent fg directly
         try:
             fg_nobg.save(out_path, format="PNG")
-            print(f"Fallback save → {out_path}")
+            print(f"Fallback save -> {out_path}")
         except Exception as e2:
             print(f"Fallback save also failed: {e2}")
             sys.exit(1)

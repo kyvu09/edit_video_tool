@@ -13,3 +13,19 @@ output/*
 # Ignore tokens and sensitive config
 config/youtube-token.json
 *.json.tmp
+node_modules
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE / OS
+.DS_Store
+.vscode/
+.agents/
+
+# Scratch and Logs
+scratch/
+*.log
