@@ -7,13 +7,9 @@ uploads/*
 output/*
 !output/.gitkeep
 
-.env.example/uploads/*
-!/uploads/.gitkeep
-
 # Ignore tokens and sensitive config
 config/youtube-token.json
 *.json.tmp
-node_modules
 
 # Python
 .venv/
@@ -29,3 +25,7 @@ __pycache__/
 # Scratch and Logs
 scratch/
 *.log
+
+# Runtime generated assets (scene images, cache) — not committed
+assets/
+cache/

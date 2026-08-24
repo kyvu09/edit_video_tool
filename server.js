@@ -17,6 +17,8 @@ const ffmpegRenderer = require('./src/services/ffmpegRenderer');
 const bgRemovalService = require('./src/services/bgRemovalService');
 const geminiService = require('./src/services/geminiService');
 const youtubeService = require('./src/services/youtubeService');
+const imageQueue = require('./src/services/imageQueue');
+const sessionManager = require('./src/services/sessionManager');
 
 
 const app = express();
@@ -199,6 +201,11 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// Serve generated assets (scene images) as static files
+const assetsDir = path.join(__dirname, 'assets');
+if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
+app.use('/assets', express.static(assetsDir));
 
 // Setup upload directories
 const uploadDir = path.join(__dirname, 'uploads');
@@ -390,6 +397,113 @@ app.post('/api/youtube/upload', async (req, res) => {
   }
 });
 // ------------------------------
+
+const flowAutomator = require('./src/services/flowAutomator');
+app.post('/api/flow-ai', async (req, res) => {
+  try {
+    const { prompt, isFirst, isLast } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'Thiếu prompt' });
+    await flowAutomator.pastePromptToFlow(prompt, isFirst, isLast);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Flow Automation Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+const viettelTtsService = require('./src/services/viettelTtsService');
+const elevenlabsTtsService = require('./src/services/elevenlabsTtsService');
+
+app.post('/api/tts', async (req, res) => {
+  try {
+    const { text, provider } = req.body;
+    if (!text) return res.status(400).json({ error: 'Thiếu text kịch bản' });
+    
+    let audioBuffer;
+    if (provider === 'elevenlabs') {
+      audioBuffer = await elevenlabsTtsService.generateSpeech(text);
+    } else {
+      // Default is Viettel AI
+      audioBuffer = await viettelTtsService.generateSpeech(text);
+    }
+    
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Disposition': 'attachment; filename="audio.mp3"',
+      'Content-Length': audioBuffer.length
+    });
+    res.send(audioBuffer);
+  } catch (err) {
+    console.error('TTS Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Image Generation Endpoints ─────────────────────────────────────────────
+
+/**
+ * POST /api/generate-images
+ * Body: { videoId: string, scenes: [{ scene: number, prompt: string }] }
+ * Returns: { sessionId: string, total: number }
+ */
+app.post('/api/generate-images', async (req, res) => {
+  try {
+    const { videoId, scenes } = req.body;
+
+    if (!videoId || typeof videoId !== 'string' || videoId.trim() === '') {
+      return res.status(400).json({ error: 'videoId is required and must be a non-empty string.' });
+    }
+    if (!Array.isArray(scenes) || scenes.length === 0) {
+      return res.status(400).json({ error: 'scenes must be a non-empty array of { scene, prompt } objects.' });
+    }
+
+    // Validate scene items
+    for (const item of scenes) {
+      if (typeof item.scene !== 'number' || typeof item.prompt !== 'string' || item.prompt.trim() === '') {
+        return res.status(400).json({ error: 'Each scene item must have a numeric scene index and a non-empty prompt string.' });
+      }
+    }
+
+    const sessionId = `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    sessionManager.createSession(sessionId, videoId.trim(), scenes.length);
+
+    // Fire-and-forget: process scenes in background
+    imageQueue.processScenes(sessionId, videoId.trim(), scenes).catch((err) => {
+      console.error(`[/api/generate-images] Unhandled queue error for session ${sessionId}:`, err.message);
+      sessionManager.failSession(sessionId, err.message);
+    });
+
+    res.status(202).json({ sessionId, total: scenes.length });
+  } catch (error) {
+    console.error('Error in POST /api/generate-images:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/image-session/:sessionId
+ * Returns the current state of an image generation session.
+ */
+app.get('/api/image-session/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const session = sessionManager.getSession(sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found.' });
+  }
+  // Sort images by scene number before returning
+  const sortedImages = [...session.images].sort((a, b) => a.scene - b.scene);
+  res.json({
+    sessionId: session.sessionId,
+    videoId: session.videoId,
+    status: session.status,
+    progress: session.progress,
+    completed: session.completed,
+    total: session.total,
+    images: sortedImages,
+    error: session.error || null,
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 // Standalone endpoint for background removal debugging (returns binary image)
 app.post('/api/debug-bg-remove', upload.any(), async (req, res) => {

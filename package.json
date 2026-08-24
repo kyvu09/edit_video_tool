@@ -8,7 +8,10 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@google/genai": "^2.12.0",
     "axios": "^1.6.2",
+    "chrome-launcher": "^1.2.1",
+    "clipboardy": "^5.3.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -17,6 +20,8 @@
     "googleapis": "^173.0.0",
     "multer": "^2.1.1",
     "openai": "^4.52.0",
+    "puppeteer-core": "^25.8.0",
+    "robotjs": "^0.9.1",
     "string-similarity": "^4.0.4"
   }
 }

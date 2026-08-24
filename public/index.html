@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- ZIP download support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -42,6 +45,8 @@
             <div class="tabs">
                 <button class="tab-btn active" data-tab="create-video-tab"> Tạo Video</button>
                 <button class="tab-btn" data-tab="script-assistant-tab"> Trợ Lý Kịch Bản AI</button>
+                <button class="tab-btn" data-tab="audio-gen-tab">🎙️ Tạo Audio</button>
+                <!-- <button class="tab-btn" data-tab="image-gen-tab"> Tạo Ảnh AI</button> -->
             </div>
 
             <!-- TAB 1: CREATE VIDEO -->
@@ -199,6 +204,11 @@
                                 <textarea id="aiScenesOutput" readonly rows="8" class="custom-textarea readonly-textarea"></textarea>
                                 <button id="btnCopyScenes" type="button" class="btn-copy"> Sao chép</button>
                             </div>
+                            <!-- Gửi từng prompt sang Google Flow -->
+                            <div id="flowAiContainer" style="margin-top: 15px; display: none;">
+                                <strong style="display:block; margin-bottom:10px;">Tự động gửi sang Google Flow:</strong>
+                                <div id="flowAiButtons" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                            </div>
                         </div>
 
                         <div class="form-section" style="margin-top: 20px;">
@@ -214,6 +224,102 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: AUDIO GENERATOR -->
+            <div id="audio-gen-tab" class="tab-content">
+                <div class="ai-assistant-container">
+                    <div class="form-section">
+                        <h3> 🎙️ Chuyển Văn Bản Thành Giọng Nói AI</h3>
+                        <p class="upload-hint">Sử dụng kịch bản đã tách ở Trợ Lý Kịch Bản AI, hoặc tự dán kịch bản của bạn vào đây.</p>
+                        
+                        <div style="margin-top: 15px;">
+                            <button id="btnFetchFromAI" type="button" class="btn-secondary-action" style="padding: 10px 15px; margin-bottom: 10px;"> Lấy kịch bản từ Trợ lý AI</button>
+                            <textarea id="ttsInput" rows="12" class="custom-textarea" placeholder="Dán hoặc gõ kịch bản bạn muốn đọc vào đây..."></textarea>
+                        </div>
+
+                        <div style="margin-top: 15px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.9em; color: #cbd5e1;">Chọn Nhà Cung Cấp (Provider):</label>
+                            <select id="ttsProvider" class="custom-textarea" style="height: auto; padding: 10px; margin-bottom: 15px;">
+                                <option value="viettel">Viettel AI (Tiếng Việt - Quỳnh Anh)</option>
+                                <option value="elevenlabs">ElevenLabs (Chất lượng cao)</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px;">
+                            <button id="btnGenerateTts" type="button" class="btn-submit" style="flex: 1; background-color: #f59e0b;"> 🎙️ Tạo Audio ngay</button>
+                        </div>
+                        
+                        <div id="ttsResultContainer" style="display: none; margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.15); border-radius: 8px;">
+                            <h4 style="margin-bottom: 10px; color: #e2e8f0; font-size: 0.95em;">Nghe Thử & Sử Dụng</h4>
+                            <audio id="ttsAudioPreview" controls style="width: 100%; margin-bottom: 15px; outline: none; border-radius: 4px;"></audio>
+                            <div style="display: flex; gap: 12px;">
+                                <button id="btnDownloadTts" type="button" class="btn-secondary-action" style="flex: 1;">⬇️ Tải xuống MP3</button>
+                                <button id="btnApplyTtsToVideo" type="button" class="btn-submit" style="flex: 1; background-color: #10b981;">✅ Dùng cho Tạo Video</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: AI IMAGE GENERATOR -->
+            <div id="image-gen-tab" class="tab-content">
+                <div class="ai-assistant-container">
+
+                    <!-- Header Section -->
+                    <div class="img-gen-header">
+                        <p class="upload-hint">Tự động tạo ảnh cho từng scene bằng Gemini AI. Ảnh được lưu vào server và hiển thị trực tiếp.</p>
+                    </div>
+
+                    <!-- Video ID + Import prompts -->
+                    <div class="form-section" style="margin-top: 16px;">
+                        <div class="img-gen-controls">
+                            <div class="img-gen-field">
+                                <label class="field-label" for="imgGenVideoId">Video ID</label>
+                                <div class="img-gen-input-row">
+                                    <input type="text" id="imgGenVideoId" class="img-gen-text-input" placeholder="e.g. my-video-2024" />
+                                    <button type="button" id="btnGenVideoId" class="btn-gen-id" title="Tạo ID ngẫu nhiên"> Tạo ID</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prompts input area -->
+                    <div class="form-section" style="margin-top: 16px;">
+                        <div class="img-gen-prompts-header">
+                            <label class="field-label">Danh sách Prompts (mỗi dòng = 1 scene)</label>
+                            <button type="button" id="btnImportPrompts" class="btn-import-prompts"> Lấy từ Tab AI</button>
+                        </div>
+                        <textarea id="imgGenPrompts" class="custom-textarea img-gen-textarea"
+                            placeholder="Scene 1: A detailed fantasy landscape with mountains and fog...&#10;Scene 2: A warrior standing on a cliff at sunset...&#10;Scene 3: ..."
+                            rows="6"></textarea>
+                        <p class="upload-hint" style="margin-top:6px;">Mỗi dòng là một prompt. Có thể import từ Tab Trợ Lý AI hoặc paste thủ công.</p>
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div style="display: flex; gap: 12px; margin-top: 18px;">
+                        <button id="btnStartImageGen" type="button" class="btn-submit" style="flex: 1;"> Bắt Đầu Tạo Ảnh</button>
+                        <button id="btnDownloadAllImages" type="button" class="btn-submit" style="flex: 0 0 auto; background: #7c3aed; display:none;"> Tải Tất Cả (ZIP)</button>
+                    </div>
+
+                    <!-- Progress -->
+                    <div id="imgGenProgress" style="display:none; margin-top: 24px;">
+                        <div class="img-gen-progress-header">
+                            <span id="imgGenProgressLabel">Đang khởi động...</span>
+                            <span id="imgGenProgressCount">0 / 0</span>
+                        </div>
+                        <div class="img-gen-progress-bar-wrap">
+                            <div class="img-gen-progress-bar" id="imgGenProgressBar" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Image Grid -->
+                    <div id="imgGenGrid" class="image-gen-grid" style="margin-top:24px;"></div>
+
+                    <!-- Error -->
+                    <div id="imgGenError" class="img-gen-error" style="display:none;"></div>
+
                 </div>
             </div>
 

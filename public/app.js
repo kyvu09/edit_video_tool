@@ -625,6 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkGeminiApi();
     initTabs();
     initAIAssistant();
+    initImageGenerator();
 });
 checkOpenAIApi(); // Run immediately too in case DOM is already loaded
 checkGeminiApi(); // Run immediately too in case DOM is already loaded
@@ -657,6 +658,64 @@ function switchTab(tabId) {
     if (btn) {
         btn.click();
     }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SHARED UTILITY — WhiskLab Format Prompt Extractor
+// Parses the AI output that contains THUMBNAIL + SCENE sections
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Extract image prompts from the AI's WhiskLab format output.
+ *
+ * Handles sections like:
+ *   THUMBNAIL
+ *   Thumbnail Prompt for WhiskLab:
+ *   <prompt text...>
+ *
+ *   SCENE 1
+ *   Script line: "..."
+ *   Image prompt for WhiskLab:
+ *   <prompt text...>
+ *
+ * @param {string} text  Raw scenes output from Gemini AI
+ * @returns {Array<{ scene: number, label: string, prompt: string }>}
+ *   scene = 0 for THUMBNAIL, 1..N for scenes
+ */
+function extractPromptsFromWhiskLabFormat(text) {
+    if (!text || !text.trim()) return [];
+
+    const results = [];
+
+    // ── THUMBNAIL section ──────────────────────────────────────
+    const thumbnailBlockMatch = text.match(/THUMBNAIL[\s\S]*?(?=\n\s*[─\-─]{3,}|\n\s*SCENE\s+\d|$)/i);
+    if (thumbnailBlockMatch) {
+        const thumbnailBlock = thumbnailBlockMatch[0];
+        // Tìm chữ "prompt:" hoặc tương tự trong block THUMBNAIL
+        const promptMatch = thumbnailBlock.match(/prompt[^:]*:\s*([\s\S]*)$/i);
+        if (promptMatch) {
+            const prompt = promptMatch[1].trim().replace(/\n+/g, ' ').trim();
+            if (prompt) {
+                results.push({ scene: 0, label: 'THUMBNAIL', prompt });
+            }
+        }
+    }
+
+    // ── SCENE sections ─────────────────────────────────────────
+    const sceneRegex = /SCENE\s+(\d+)[\s\S]*?(?:prompt[^:]*:)\s*([\s\S]*?)(?=\n\s*SCENE\s+\d|\n\s*[─\-─]{3,}|$)/gi;
+    let match;
+    while ((match = sceneRegex.exec(text)) !== null) {
+        const sceneNum = parseInt(match[1], 10);
+        const prompt = match[2].trim().replace(/\n+/g, ' ').trim();
+        if (prompt) {
+            results.push({ scene: sceneNum, label: `Scene ${sceneNum}`, prompt });
+        }
+    }
+
+    // Sort: THUMBNAIL (0) first, then by scene number
+    results.sort((a, b) => a.scene - b.scene);
+
+    return results;
 }
 
 // --- AI Script Assistant Feature ---
@@ -786,6 +845,73 @@ function initAIAssistant() {
             txtScenesOutput.value = data.scenesAndPrompts;
             txtScriptOutput.value = data.separatedScript;
 
+            // Extract prompts
+            const extracted = extractPromptsFromWhiskLabFormat(data.scenesAndPrompts);
+
+            // Render FlowAI buttons
+            const flowAiContainer = document.getElementById('flowAiContainer');
+            const flowAiButtons = document.getElementById('flowAiButtons');
+            if (flowAiContainer && flowAiButtons && extracted.length > 0) {
+                flowAiButtons.innerHTML = '';
+                
+                const btnAll = document.createElement('button');
+                btnAll.type = 'button';
+                btnAll.className = 'btn-submit';
+                btnAll.style.backgroundColor = '#8b5cf6';
+                btnAll.innerHTML = `🚀 Tự động dán tất cả (${extracted.length} scenes) sang Google Flow`;
+                
+                const statusText = document.createElement('div');
+                statusText.style.marginTop = '10px';
+                statusText.style.fontSize = '0.9em';
+                statusText.style.color = '#10b981';
+
+                btnAll.addEventListener('click', async () => {
+                    btnAll.disabled = true;
+                    
+                    for (let i = 0; i < extracted.length; i++) {
+                        const item = extracted[i];
+                        const isFirst = (i === 0);
+                        const isLast = (i === extracted.length - 1);
+                        const label = item.label || 'Scene ' + i;
+                        
+                        btnAll.innerHTML = `⏳ Đang xử lý ${label}... (${i + 1}/${extracted.length})`;
+                        statusText.innerHTML = `Đang dán ${label}... Vui lòng không chạm chuột/bàn phím.`;
+                        
+                        try {
+                            const res = await fetch('/api/flow-ai', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ prompt: item.prompt, isFirst: isFirst, isLast: isLast })
+                            });
+                            
+                            const result = await res.json();
+                            if (!result.success) throw new Error(result.error);
+                            
+                            if (!isLast) {
+                                // Countdown 3s trước khi dán hình tiếp theo
+                                for (let sec = 3; sec > 0; sec--) {
+                                    statusText.innerHTML = `✅ Đã dán ${label}. Chờ ${sec}s trước khi dán tiếp...`;
+                                    await new Promise(r => setTimeout(r, 1000));
+                                }
+                            }
+                        } catch (e) {
+                            alert(`Lỗi ở ${label}: ` + e.message);
+                            break; // Dừng nếu lỗi
+                        }
+                    }
+                    
+                    btnAll.innerHTML = `✅ Hoàn thành dán tất cả!`;
+                    statusText.innerHTML = `Đã xong toàn bộ ${extracted.length} scenes.`;
+                    btnAll.disabled = false;
+                });
+                
+                flowAiButtons.appendChild(btnAll);
+                flowAiButtons.appendChild(statusText);
+                flowAiContainer.style.display = 'block';
+            } else if (flowAiContainer) {
+                flowAiContainer.style.display = 'none';
+            }
+
             // Show results
             aiProgress.style.display = 'none';
             aiResults.style.display = 'block';
@@ -806,6 +932,33 @@ function initAIAssistant() {
         btnCopyScenes.textContent = '✅ Đã chép!';
         setTimeout(() => btnCopyScenes.textContent = origText, 2000);
     });
+
+    // ── Send extracted prompts to Tab 3 ───────────────────────
+    const btnSendToImageGen = document.getElementById('btnSendToImageGen');
+    if (btnSendToImageGen) {
+        btnSendToImageGen.addEventListener('click', () => {
+            const raw = txtScenesOutput.value.trim();
+            if (!raw) return;
+
+            const extracted = extractPromptsFromWhiskLabFormat(raw);
+            if (extracted.length === 0) {
+                alert('Không tìm thấy prompt nào. Hãy chắc chắn output đúng format WhiskLab.');
+                return;
+            }
+
+            // Format as one prompt per line: "THUMBNAIL: ..." or "Scene N: ..."
+            const formatted = extracted.map(({ label, prompt }) => `${label}: ${prompt}`).join('\n');
+            const imgGenPrompts = document.getElementById('imgGenPrompts');
+            if (imgGenPrompts) imgGenPrompts.value = formatted;
+
+            // Flash confirmation
+            btnSendToImageGen.textContent = '✅ Đã gửi!';
+            setTimeout(() => { btnSendToImageGen.textContent = ' Gửi Prompts → Tab Ảnh AI'; }, 2000);
+
+            // Switch to Tab 3
+            switchTab('image-gen-tab');
+        });
+    }
 
     btnCopyScript.addEventListener('click', () => {
         txtScriptOutput.select();
@@ -829,6 +982,106 @@ function initAIAssistant() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     });
+
+    // Audio Generation (Viettel AI) Helpers
+    const btnGenerateTts = document.getElementById('btnGenerateTts');
+    const ttsInput = document.getElementById('ttsInput');
+    const btnFetchFromAI = document.getElementById('btnFetchFromAI');
+    
+    if (btnFetchFromAI) {
+        btnFetchFromAI.addEventListener('click', () => {
+            const aiScript = txtScriptOutput.value.trim();
+            if (!aiScript) {
+                alert('Chưa có kịch bản nào được tạo bên tab Trợ Lý Kịch Bản AI!');
+                return;
+            }
+            ttsInput.value = aiScript;
+            // Scroll to the TTS input for better UX
+            ttsInput.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+
+    if (btnGenerateTts && ttsInput) {
+        btnGenerateTts.addEventListener('click', async () => {
+            const scriptText = ttsInput.value.trim();
+            if (!scriptText) {
+                alert('Vui lòng dán hoặc lấy kịch bản vào ô trống trước khi tạo audio!');
+                return;
+            }
+            
+            btnGenerateTts.disabled = true;
+            const origHtml = btnGenerateTts.innerHTML;
+            btnGenerateTts.innerHTML = '⏳ Đang tạo Audio...';
+            
+            try {
+                const provider = document.getElementById('ttsProvider') ? document.getElementById('ttsProvider').value : 'viettel';
+                const res = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: scriptText, provider: provider })
+                });
+                
+                if (!res.ok) {
+                    let err;
+                    try { err = await res.json(); } catch(e){}
+                    throw new Error(err?.error || 'Lỗi tạo audio');
+                }
+                
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                // Show result container
+                const ttsResultContainer = document.getElementById('ttsResultContainer');
+                const ttsAudioPreview = document.getElementById('ttsAudioPreview');
+                const btnDownloadTts = document.getElementById('btnDownloadTts');
+                const btnApplyTtsToVideo = document.getElementById('btnApplyTtsToVideo');
+                
+                if (ttsResultContainer && ttsAudioPreview) {
+                    ttsAudioPreview.src = url;
+                    ttsResultContainer.style.display = 'block';
+                    ttsAudioPreview.play().catch(e => console.log('Auto-play prevented:', e));
+                    
+                    // Xóa event cũ bằng cách clone node nếu cần, hoặc gán lại bằng cách override onclick
+                    btnDownloadTts.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'audio.mp3';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    };
+                    
+                    btnApplyTtsToVideo.onclick = () => {
+                        const file = new File([blob], 'audio.mp3', { type: 'audio/mpeg' });
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(file);
+                        
+                        const videoAudioInput = document.getElementById('audio');
+                        if (videoAudioInput) {
+                            videoAudioInput.files = dataTransfer.files;
+                            
+                            // Cập nhật tên hiển thị bên Tab Tạo Video
+                            const audioFileName = document.getElementById('audioFileName');
+                            if (audioFileName) {
+                                audioFileName.textContent = "audio.mp3 (Từ AI)";
+                                audioFileName.style.display = 'block';
+                            }
+                            
+                            alert('Đã tự động điền Audio vào Form tạo Video!');
+                            // Chuyển sang Tab Tạo Video
+                            switchTab('create-video-tab');
+                        }
+                    };
+                }
+            } catch (e) {
+                console.error('TTS Error:', e);
+                alert('Lỗi: ' + e.message);
+            } finally {
+                btnGenerateTts.disabled = false;
+                btnGenerateTts.innerHTML = origHtml;
+            }
+        });
+    }
 
     // Auto-fill form and switch tab helper
     btnApplyScript.addEventListener('click', () => {
@@ -854,3 +1107,345 @@ function initAIAssistant() {
 }
 
 
+// ═══════════════════════════════════════════════════════════
+// TAB 3 — AI IMAGE GENERATOR
+// ═══════════════════════════════════════════════════════════
+
+function initImageGenerator() {
+    const btnGenVideoId   = document.getElementById('btnGenVideoId');
+    const inputVideoId    = document.getElementById('imgGenVideoId');
+    const btnImportPrompts = document.getElementById('btnImportPrompts');
+    const txtPrompts      = document.getElementById('imgGenPrompts');
+    const btnStart        = document.getElementById('btnStartImageGen');
+    const btnDownloadAll  = document.getElementById('btnDownloadAllImages');
+    const progressWrap    = document.getElementById('imgGenProgress');
+    const progressBar     = document.getElementById('imgGenProgressBar');
+    const progressLabel   = document.getElementById('imgGenProgressLabel');
+    const progressCount   = document.getElementById('imgGenProgressCount');
+    const grid            = document.getElementById('imgGenGrid');
+    const errorBox        = document.getElementById('imgGenError');
+
+    if (!btnStart) return;
+
+    // Track state
+    let pollingInterval = null;
+    let generatedImages = []; // { scene, imagePath }[]
+
+    // ── Generate random Video ID ──────────────────────────────
+    function generateVideoId() {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        return 'vid-' + Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+
+    if (btnGenVideoId) {
+        btnGenVideoId.addEventListener('click', () => {
+            inputVideoId.value = generateVideoId();
+        });
+    }
+
+    // Auto-generate on load if empty
+    if (inputVideoId && !inputVideoId.value) {
+        inputVideoId.value = generateVideoId();
+    }
+
+    // ── Import prompts from Tab 2 ─────────────────────────────
+    if (btnImportPrompts) {
+        btnImportPrompts.addEventListener('click', () => {
+            const scenesOutput = document.getElementById('aiScenesOutput');
+            if (!scenesOutput || !scenesOutput.value.trim()) {
+                alert('Tab Trợ Lý AI chưa có nội dung. Hãy tạo phân cảnh trước.');
+                return;
+            }
+            txtPrompts.value = scenesOutput.value.trim();
+            // Visually flash the textarea
+            txtPrompts.style.borderColor = '#34d399';
+            setTimeout(() => { txtPrompts.style.borderColor = ''; }, 1200);
+        });
+    }
+
+    // ── Parse prompt lines into scenes array ──────────────────
+    /**
+     * Parse the textarea content into [{ scene: number, label: string, prompt: string }]
+     *
+     * Supports formats (in priority order):
+     *   "THUMBNAIL: prompt text"         → scene 0, label "THUMBNAIL"
+     *   "Scene N: prompt text"           → scene N
+     *   "N. prompt text" / "N: prompt"   → scene N
+     *   plain lines                      → assigned sequential index
+     *
+     * Multi-line prompts from the WhiskLab extractor are already single-line
+     * (newlines replaced with spaces) so this handles them correctly.
+     */
+    function parsePrompts(rawText) {
+        const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+        const scenes = [];
+        let sceneIndex = 1;
+
+        for (const line of lines) {
+            // ① THUMBNAIL label (scene 0)
+            const thumbMatch = line.match(/^(thumbnail):\s*(.+)/i);
+            if (thumbMatch) {
+                scenes.push({ scene: 0, label: 'THUMBNAIL', prompt: thumbMatch[2].trim() });
+                // Don't increment sceneIndex for thumbnail
+                continue;
+            }
+
+            // ② "Scene N:" or just "N." or "N:"
+            const sceneMatch = line.match(/^(?:scene\s*)?(\d+)[.:]\s*(.+)/i);
+            if (sceneMatch) {
+                const num = parseInt(sceneMatch[1], 10);
+                scenes.push({ scene: num, label: `Scene ${num}`, prompt: sceneMatch[2].trim() });
+                sceneIndex = num + 1;
+                continue;
+            }
+
+            // ③ Plain line — assign sequential number
+            scenes.push({ scene: sceneIndex, label: `Scene ${sceneIndex}`, prompt: line });
+            sceneIndex++;
+        }
+        return scenes;
+    }
+
+    // ── Build skeleton grid cards ─────────────────────────────
+    function buildSkeletonGrid(scenes) {
+        grid.innerHTML = '';
+        generatedImages = [];
+        scenes.forEach(({ scene, label }) => {
+            const displayLabel = label || (scene === 0 ? 'THUMBNAIL' : `Scene ${scene}`);
+            const card = document.createElement('div');
+            card.className = 'img-gen-card skeleton';
+            card.id = `img-card-scene-${scene}`;
+            card.innerHTML = `
+                <div class="card-spinner"></div>
+                <span class="card-spinner-label">${displayLabel}</span>
+                <span class="img-gen-scene-badge">${displayLabel}</span>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // ── Update a card when its image is ready ─────────────────
+    function revealCard(sceneNum, imagePath) {
+        const card = document.getElementById(`img-card-scene-${sceneNum}`);
+        if (!card) return;
+
+        card.classList.remove('skeleton');
+        card.classList.add('loaded');
+        card.innerHTML = `
+            <img src="${imagePath}" alt="Scene ${sceneNum}" loading="lazy" />
+            <span class="img-gen-scene-badge">Scene ${sceneNum}</span>
+            <button class="btn-download-single" title="Tải ảnh này" data-src="${imagePath}" data-scene="${sceneNum}">⬇</button>
+        `;
+
+        // Single download handler
+        card.querySelector('.btn-download-single').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const src  = e.currentTarget.dataset.src;
+            const num  = e.currentTarget.dataset.scene;
+            downloadSingleImage(src, `scene${String(num).padStart(2, '0')}.png`);
+        });
+    }
+
+    // ── Show error on a card ──────────────────────────────────
+    function showCardError(sceneNum) {
+        const card = document.getElementById(`img-card-scene-${sceneNum}`);
+        if (!card) return;
+        card.classList.remove('skeleton');
+        card.classList.add('card-error');
+        card.innerHTML = `
+            <span class="img-gen-scene-badge">Scene ${sceneNum}</span>
+            <div class="card-error-icon">⚠️</div>
+            <div class="card-error-text">Tạo ảnh thất bại</div>
+        `;
+    }
+
+    // ── Single image download ─────────────────────────────────
+    async function downloadSingleImage(src, filename) {
+        try {
+            const res = await fetch(src);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            alert('Tải ảnh thất bại: ' + e.message);
+        }
+    }
+
+    // ── Download All as ZIP ───────────────────────────────────
+    async function downloadAllAsZip(videoId, images) {
+        if (typeof JSZip === 'undefined') {
+            alert('JSZip chưa tải xong. Vui lòng thử lại sau vài giây.');
+            return;
+        }
+
+        btnDownloadAll.disabled = true;
+        btnDownloadAll.textContent = '⏳ Đang nén...';
+
+        try {
+            const zip = new JSZip();
+            const folder = zip.folder(videoId);
+
+            await Promise.all(images.map(async ({ scene, imagePath }) => {
+                if (!imagePath) return;
+                const res = await fetch(imagePath);
+                const blob = await res.blob();
+                const filename = `scene${String(scene).padStart(2, '0')}.png`;
+                folder.file(filename, blob);
+            }));
+
+            const content = await zip.generateAsync({ type: 'blob' });
+            saveAs(content, `${videoId}-images.zip`);
+        } catch (e) {
+            alert('Nén ZIP thất bại: ' + e.message);
+        } finally {
+            btnDownloadAll.disabled = false;
+            btnDownloadAll.textContent = '⬇ Tải Tất Cả (ZIP)';
+        }
+    }
+
+    // ── Polling loop ──────────────────────────────────────────
+    function startPolling(sessionId, total) {
+        const rendered = new Set(); // scene numbers already revealed
+
+        pollingInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/image-session/${sessionId}`);
+                if (!res.ok) throw new Error(`Status ${res.status}`);
+                const data = await res.json();
+
+                // Update progress UI
+                progressBar.style.width = data.progress + '%';
+                progressCount.textContent = `${data.completed} / ${data.total}`;
+
+                if (data.status === 'running') {
+                    progressLabel.textContent = `Đang tạo ảnh... (${data.progress}%)`;
+                }
+
+                // Reveal newly completed images
+                (data.images || []).forEach(img => {
+                    if (rendered.has(img.scene)) return;
+                    rendered.add(img.scene);
+
+                    if (img.imagePath) {
+                        revealCard(img.scene, img.imagePath);
+                        generatedImages.push(img);
+                    } else {
+                        showCardError(img.scene);
+                    }
+                });
+
+                // Done states
+                if (data.status === 'completed' || data.status === 'failed') {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+
+                    if (data.status === 'completed') {
+                        progressLabel.textContent = `✅ Hoàn tất! Đã tạo ${data.completed}/${data.total} ảnh.`;
+                        progressBar.style.width = '100%';
+                        if (generatedImages.length > 0) {
+                            btnDownloadAll.style.display = 'inline-flex';
+                        }
+                    } else {
+                        progressLabel.textContent = `❌ Lỗi: ${data.error || 'Không rõ nguyên nhân'}`;
+                        showError(data.error || 'Image generation failed.');
+                    }
+
+                    btnStart.disabled = false;
+                    btnStart.textContent = '🔄 Tạo Lại';
+                }
+
+            } catch (e) {
+                console.error('[Image Gen Polling] Error:', e.message);
+            }
+        }, 1500);
+    }
+
+    // ── Show error box ────────────────────────────────────────
+    function showError(msg) {
+        errorBox.style.display = 'block';
+        errorBox.textContent = '❌ ' + msg;
+    }
+
+    // ── Start button handler ──────────────────────────────────
+    btnStart.addEventListener('click', async () => {
+        const videoId = inputVideoId.value.trim();
+        const rawText = txtPrompts.value.trim();
+
+        // Reset error
+        errorBox.style.display = 'none';
+        errorBox.textContent = '';
+
+        if (!videoId) {
+            alert('Vui lòng nhập hoặc tạo Video ID trước.');
+            return;
+        }
+        if (!rawText) {
+            alert('Vui lòng nhập danh sách prompts. Hoặc click "Lấy từ Tab AI" để import.');
+            return;
+        }
+
+        const scenes = parsePrompts(rawText);
+        if (scenes.length === 0) {
+            alert('Không thể phân tích danh sách prompts. Hãy kiểm tra lại định dạng.');
+            return;
+        }
+
+        // Stop any existing polling
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        }
+
+        // Build skeleton grid
+        buildSkeletonGrid(scenes);
+        generatedImages = [];
+        btnDownloadAll.style.display = 'none';
+
+        // Show progress
+        progressWrap.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressLabel.textContent = 'Đang gửi yêu cầu...';
+        progressCount.textContent = `0 / ${scenes.length}`;
+
+        btnStart.disabled = true;
+        btnStart.textContent = '⏳ Đang xử lý...';
+
+        try {
+            const res = await fetch('/api/generate-images', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoId, scenes })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || `HTTP ${res.status}`);
+            }
+
+            const { sessionId, total } = await res.json();
+            progressLabel.textContent = `Đã bắt đầu – ${total} scenes đang được xử lý...`;
+            startPolling(sessionId, total);
+
+        } catch (e) {
+            console.error('[Image Gen] Start error:', e);
+            showError(e.message);
+            progressWrap.style.display = 'none';
+            btnStart.disabled = false;
+            btnStart.textContent = '🎨 Bắt Đầu Tạo Ảnh';
+        }
+    });
+
+    // ── Download All handler ──────────────────────────────────
+    if (btnDownloadAll) {
+        btnDownloadAll.addEventListener('click', () => {
+            const videoId = inputVideoId.value.trim() || 'video';
+            downloadAllAsZip(videoId, generatedImages);
+        });
+    }
+}
