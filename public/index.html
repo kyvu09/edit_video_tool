@@ -13,44 +13,56 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1> Edit Video Tool</h1>
-            <p>Create videos from images, audio, and scripts</p>
-            <div style="margin-top: 0.75rem; margin-bottom: 0.5rem;">
-                <a href="/debug.html" style="color: #a5b4fc; text-decoration: none; font-weight: 700; border: 1px solid rgba(255,255,255,0.15); padding: 0.4rem 0.8rem; border-radius: 8px; background: rgba(255,255,255,0.03); transition: all 0.3s; font-size: 0.9rem;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'"> Tách Nền Debugger</a>
+    <div class="app-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1> Edit Video Tool</h1>
+                <p>AI Video Creator Pipeline</p>
+                
+                <a href="/debug.html" class="link-debugger"> Tách Nền Debugger</a>
             </div>
-            <div class="api-debug-container">
+
+            <!-- Nút điều hướng (thay cho Tabs) -->
+            <nav class="sidebar-menu">
+                <p class="menu-label">CÁC BƯỚC THỰC HIỆN</p>
+                <button class="tab-btn active" data-tab="script-assistant-tab">
+                    <span class="step-num">1</span> Trợ Lý Kịch Bản AI
+                </button>
+                <button class="tab-btn" data-tab="audio-gen-tab">
+                    <span class="step-num">2</span> 🎙️ Tạo Audio AI
+                </button>
+                <button class="tab-btn" data-tab="create-video-tab">
+                    <span class="step-num">3</span> 🎬 Render Video
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p class="menu-label" style="margin-bottom:10px;">TRẠNG THÁI HỆ THỐNG</p>
                 <div class="api-debug-wrapper">
                     <div class="api-debug-widget" id="apiDebugWidget">
                         <span class="api-status-dot checking" id="apiStatusDot"></span>
-                        <span class="api-status-text" id="apiStatusText">Checking OpenAI API...</span>
+                        <span class="api-status-text" id="apiStatusText">OpenAI API...</span>
                         <button type="button" class="btn-check-api" id="btnCheckApi"> Check</button>
                     </div>
                     <div class="api-details-tooltip" id="apiDetailsTooltip">Loading status information...</div>
                 </div>
-                <div class="api-debug-wrapper">
+                <div class="api-debug-wrapper" style="margin-top: 10px;">
                     <div class="api-debug-widget" id="geminiDebugWidget">
                         <span class="api-status-dot checking" id="geminiStatusDot"></span>
-                        <span class="api-status-text" id="geminiStatusText">Checking Gemini API...</span>
+                        <span class="api-status-text" id="geminiStatusText">Gemini API...</span>
                         <button type="button" class="btn-check-api" id="btnCheckGemini"> Check</button>
                     </div>
                     <div class="api-details-tooltip" id="geminiDetailsTooltip">Loading status information...</div>
                 </div>
             </div>
-        </header>
+        </aside>
 
-        <main>
-            <!-- Tab Controls -->
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="create-video-tab"> Tạo Video</button>
-                <button class="tab-btn" data-tab="script-assistant-tab"> Trợ Lý Kịch Bản AI</button>
-                <button class="tab-btn" data-tab="audio-gen-tab">🎙️ Tạo Audio</button>
-                <!-- <button class="tab-btn" data-tab="image-gen-tab"> Tạo Ảnh AI</button> -->
-            </div>
-
-            <!-- TAB 1: CREATE VIDEO -->
-            <div id="create-video-tab" class="tab-content active">
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <!-- TAB 1: CREATE VIDEO -->
+            <div id="create-video-tab" class="tab-content">
                 <form id="uploadForm" class="upload-form">
                     <div class="form-section">
                         <label for="audio">
@@ -152,7 +164,7 @@
             </div>
 
             <!-- TAB 2: AI SCRIPT ASSISTANT -->
-            <div id="script-assistant-tab" class="tab-content">
+            <div id="script-assistant-tab" class="tab-content active">
                 <div class="ai-assistant-container">
                     <div class="form-section">
                         <label for="rawScriptText" style="cursor: default;">
@@ -203,6 +215,11 @@
                             <div class="textarea-container">
                                 <textarea id="aiScenesOutput" readonly rows="8" class="custom-textarea readonly-textarea"></textarea>
                                 <button id="btnCopyScenes" type="button" class="btn-copy"> Sao chép</button>
+                            </div>
+                            <!-- Copy individual prompts -->
+                            <div id="individualCopyButtonsContainer" style="margin-top: 15px; display: none;">
+                                <strong style="display:block; margin-bottom:8px; font-size: 0.9em; color: var(--text-secondary);">Sao chép thủ công từng phần:</strong>
+                                <div id="individualCopyButtons" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                             </div>
                             <!-- Gửi từng prompt sang Google Flow -->
                             <div id="flowAiContainer" style="margin-top: 15px; display: none;">
@@ -435,11 +452,8 @@
                 <p id="errorMessage"></p>
                 <button onclick="location.reload()" class="btn-retry">Try Again</button>
             </div>
+            </div>
         </main>
-
-        <footer>
-            <p>Developer: kyvu</p>
-        </footer>
     </div>
 
     <script src="app.js"></script>

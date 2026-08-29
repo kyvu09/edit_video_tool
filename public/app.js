@@ -848,6 +848,40 @@ function initAIAssistant() {
             // Extract prompts
             const extracted = extractPromptsFromWhiskLabFormat(data.scenesAndPrompts);
 
+            // Render Individual Copy Buttons
+            const individualCopyButtonsContainer = document.getElementById('individualCopyButtonsContainer');
+            const individualCopyButtons = document.getElementById('individualCopyButtons');
+            if (individualCopyButtonsContainer && individualCopyButtons) {
+                if (extracted.length > 0) {
+                    individualCopyButtons.innerHTML = '';
+                    extracted.forEach((item, index) => {
+                        const label = item.label || 'Scene ' + index;
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn-secondary-action';
+                        btn.style.padding = '6px 12px';
+                        btn.style.fontSize = '0.85em';
+                        btn.innerHTML = `📋 Copy ${label}`;
+                        
+                        btn.addEventListener('click', () => {
+                            navigator.clipboard.writeText(item.prompt).then(() => {
+                                btn.innerHTML = `✅ Đã copy ${label}`;
+                                btn.style.backgroundColor = '#10b981'; // Xanh lá cây
+                                btn.style.color = '#ffffff';
+                                btn.style.borderColor = '#10b981';
+                            }).catch(err => {
+                                alert('Lỗi copy: ' + err.message);
+                            });
+                        });
+                        
+                        individualCopyButtons.appendChild(btn);
+                    });
+                    individualCopyButtonsContainer.style.display = 'block';
+                } else {
+                    individualCopyButtonsContainer.style.display = 'none';
+                }
+            }
+
             // Render FlowAI buttons
             const flowAiContainer = document.getElementById('flowAiContainer');
             const flowAiButtons = document.getElementById('flowAiButtons');
