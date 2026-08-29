@@ -1,3 +1,6 @@
+URL: https://youtube.com/shorts/zmRifPaOYFo?si=1QseqlOLjd-H-f6i
+
+PROMPT:
 Hãy xem và đọc toàn bộ nội dung của video từ đầu đến cuối, sau đó **trích xuất toàn bộ nội dung thành văn bản thuần túy**.
 
 Yêu cầu:

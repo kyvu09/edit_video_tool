@@ -166,6 +166,20 @@
             <!-- TAB 2: AI SCRIPT ASSISTANT -->
             <div id="script-assistant-tab" class="tab-content active">
                 <div class="ai-assistant-container">
+                    
+                    <!-- Extract Content Section -->
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <label for="videoExtractUrl" style="cursor: default; padding: 20px 16px;">
+                            <span class="icon">🔗</span>
+                            <span>Trích xuất nội dung từ Video (AI)</span>
+                            <p class="upload-hint">Dán link YouTube vào đây, AI sẽ đọc toàn bộ nội dung và điền vào kịch bản bên dưới.</p>
+                        </label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="videoExtractUrl" class="custom-textarea" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="https://www.youtube.com/watch?v=...">
+                            <button id="btnExtractVideo" type="button" class="btn-secondary-action" style="padding: 12px 24px; white-space: nowrap;"> Trích xuất</button>
+                        </div>
+                    </div>
+
                     <div class="form-section">
                         <label for="rawScriptText" style="cursor: default;">
                             <span class="icon"></span>

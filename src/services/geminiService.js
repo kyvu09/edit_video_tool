@@ -6,11 +6,12 @@ const PROMPT_DIR = path.resolve(__dirname, '..', '..', 'prompt');
 const PROMPT_CREATE_PATH = path.join(PROMPT_DIR, 'prompt-create-scenes.md');
 const PROMPT_SEPARATE_PATH = path.join(PROMPT_DIR, 'prompt-separate-scenes.md');
 const PROMPT_METADATA_PATH = path.join(PROMPT_DIR, 'video-metadata.md');
+const PROMPT_EXTRACT_PATH = path.join(PROMPT_DIR, 'extract-content.md');
 
 /**
  * Call the Gemini API via Axios REST request
  */
-async function callGemini(systemInstruction, userPrompt) {
+async function callGemini(systemInstruction, userPrompt, temperature = 0.7) {
   const apiKey = process.env.GEMINI_API_KEY;
   const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   
@@ -30,7 +31,10 @@ async function callGemini(systemInstruction, userPrompt) {
           }
         ]
       }
-    ]
+    ],
+    generationConfig: {
+      temperature: temperature
+    }
   };
 
   if (systemInstruction) {
@@ -47,7 +51,7 @@ async function callGemini(systemInstruction, userPrompt) {
     headers: {
       'Content-Type': 'application/json'
     },
-    timeout: 300000 // 5 phut timeout (increased to handle longer generations/congestions)
+    timeout: 300000 // 5 phut timeout
   });
 
   const candidates = response.data && response.data.candidates;
@@ -119,4 +123,80 @@ async function generateVideoMetadata(rawScriptText) {
   return metadataOutput;
 }
 
-module.exports = { generateScenes, generateVideoMetadata };
+async function extractVideoContent(videoUrl) {
+  if (!videoUrl || videoUrl.trim() === '') {
+    throw new Error('Video URL cannot be empty.');
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error('GEMINI_API_KEY is not defined in environment variables (.env file).');
+  }
+
+  let extractPrompt = '';
+  try {
+    extractPrompt = fs.readFileSync(PROMPT_EXTRACT_PATH, 'utf8');
+  } catch (err) {
+    throw new Error(`Failed to read prompt file at ${PROMPT_EXTRACT_PATH}: ${err.message}`);
+  }
+
+  // Xoá dòng [VIDEO_URL] khỏi prompt vì video sẽ được gửi qua fileData
+  const textPrompt = extractPrompt.replace('[VIDEO_URL]', '').trim();
+
+  // Debug: lưu prompt cuối cùng
+  fs.writeFileSync(
+    path.join(__dirname, '..', '..', 'debug_prompt.txt'),
+    `URL: ${videoUrl}\n\nPROMPT:\n${textPrompt}`,
+    'utf8'
+  );
+
+  console.log('[Gemini Service] Sending video URL via fileData to Gemini for extraction...');
+  console.log('[Gemini Service] Video URL:', videoUrl);
+
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  // Gửi video URL qua fileData để Gemini thực sự "xem" video
+  const payload = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            fileData: {
+              fileUri: videoUrl
+            }
+          },
+          {
+            text: textPrompt
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.1
+    }
+  };
+
+  const response = await axios.post(apiUrl, payload, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 300000 // 5 phút timeout
+  });
+
+  const candidates = response.data && response.data.candidates;
+  if (
+    candidates &&
+    candidates[0] &&
+    candidates[0].content &&
+    candidates[0].content.parts &&
+    candidates[0].content.parts[0]
+  ) {
+    return candidates[0].content.parts[0].text;
+  } else {
+    console.error('[Gemini Service] Extract API Error Response:', JSON.stringify(response.data));
+    throw new Error('Invalid or empty response structure received from Gemini API.');
+  }
+}
+
+module.exports = { generateScenes, generateVideoMetadata, extractVideoContent };

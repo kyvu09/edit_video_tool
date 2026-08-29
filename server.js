@@ -320,6 +320,22 @@ app.post('/api/generate-metadata', async (req, res) => {
   }
 });
 
+// Endpoint to extract text content from a video URL via Gemini
+app.post('/api/extract-video', async (req, res) => {
+  try {
+    const { videoUrl } = req.body;
+    if (!videoUrl || videoUrl.trim() === '') {
+      return res.status(400).json({ error: 'Video URL cannot be empty.' });
+    }
+
+    const result = await geminiService.extractVideoContent(videoUrl);
+    res.json({ text: result });
+  } catch (error) {
+    console.error('Error in /api/extract-video:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- YouTube API Endpoints ---
 app.get('/api/youtube/auth', (req, res) => {
   try {

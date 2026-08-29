@@ -648,6 +648,12 @@ function initTabs() {
             if (targetEl) {
                 targetEl.classList.add('active');
             }
+
+            // Reset scroll to top when switching tabs
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.scrollTop = 0;
+            }
         });
     });
 }
@@ -741,7 +747,56 @@ function initAIAssistant() {
     const btnCopyTitle = document.getElementById('btnCopyTitle');
     const btnCopyDesc = document.getElementById('btnCopyDesc');
 
+    // Extract Video Elements
+    const btnExtractVideo = document.getElementById('btnExtractVideo');
+    const txtVideoExtractUrl = document.getElementById('videoExtractUrl');
+
     if (!btnGenerate) return;
+
+    if (btnExtractVideo && txtVideoExtractUrl) {
+        btnExtractVideo.addEventListener('click', async () => {
+            const videoUrl = txtVideoExtractUrl.value.trim();
+            if (!videoUrl) {
+                alert('Vui lòng nhập link video / YouTube.');
+                return;
+            }
+
+            const origHtml = btnExtractVideo.innerHTML;
+            btnExtractVideo.disabled = true;
+            btnExtractVideo.innerHTML = '⏳ Đang trích xuất...';
+
+            try {
+                const response = await fetch('/api/extract-video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ videoUrl })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'Lỗi trích xuất video');
+                }
+
+                const data = await response.json();
+                if (data.text) {
+                    txtRawScript.value = data.text;
+                    // Flash success
+                    btnExtractVideo.innerHTML = '✅ Đã trích xuất xong!';
+                    setTimeout(() => { btnExtractVideo.innerHTML = origHtml; }, 3000);
+                } else {
+                    throw new Error('Không có nội dung trả về');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Lỗi: ' + err.message);
+                btnExtractVideo.innerHTML = origHtml;
+            } finally {
+                btnExtractVideo.disabled = false;
+            }
+        });
+    }
+
+
 
     if (btnGenerateMetadata) {
         btnGenerateMetadata.addEventListener('click', async () => {
