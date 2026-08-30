@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Video Creator - Edit Video Tool</title>
+    <title>AI Video Creator — Edit Video Tool</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,462 +14,673 @@
 </head>
 <body>
     <div class="app-layout">
-        <!-- SIDEBAR -->
+
+        <!-- ══════════════════ SIDEBAR ══════════════════ -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h1> Edit Video Tool</h1>
-                <p>AI Video Creator Pipeline</p>
-                
-                <a href="/debug.html" class="link-debugger"> Tách Nền Debugger</a>
+                <div class="sidebar-logo">
+                    <div class="sidebar-logo-icon">🎬</div>
+                    <div class="sidebar-logo-text">
+                        <h1>Edit Video Tool</h1>
+                        <p>AI Video Creator Pipeline</p>
+                    </div>
+                </div>
+                <a href="/debug.html" class="link-debugger">Tách Nền Debugger</a>
             </div>
 
-            <!-- Nút điều hướng (thay cho Tabs) -->
             <nav class="sidebar-menu">
-                <p class="menu-label">CÁC BƯỚC THỰC HIỆN</p>
+                <p class="menu-label">Các bước thực hiện</p>
+
                 <button class="tab-btn active" data-tab="script-assistant-tab">
-                    <span class="step-num">1</span> Trợ Lý Kịch Bản AI
+                    <div class="tab-btn-icon">✍️</div>
+                    <div class="tab-btn-text">
+                        <span class="tab-btn-title">Trợ Lý Kịch Bản</span>
+                        <span class="tab-btn-desc">Phân cảnh & viết prompt AI</span>
+                    </div>
+                    <span class="step-num">1</span>
                 </button>
+
                 <button class="tab-btn" data-tab="audio-gen-tab">
-                    <span class="step-num">2</span> 🎙️ Tạo Audio AI
+                    <div class="tab-btn-icon">🎙️</div>
+                    <div class="tab-btn-text">
+                        <span class="tab-btn-title">Tạo Audio AI</span>
+                        <span class="tab-btn-desc">Text-to-speech chất lượng cao</span>
+                    </div>
+                    <span class="step-num">2</span>
                 </button>
+
                 <button class="tab-btn" data-tab="create-video-tab">
-                    <span class="step-num">3</span> 🎬 Render Video
+                    <div class="tab-btn-icon">🎬</div>
+                    <div class="tab-btn-text">
+                        <span class="tab-btn-title">Render Video</span>
+                        <span class="tab-btn-desc">Tổng hợp & xuất video cuối</span>
+                    </div>
+                    <span class="step-num">3</span>
                 </button>
             </nav>
 
+            <!-- API Status -->
             <div class="sidebar-footer">
-                <p class="menu-label" style="margin-bottom:10px;">TRẠNG THÁI HỆ THỐNG</p>
+                <p class="menu-label">Trạng thái hệ thống</p>
+
                 <div class="api-debug-wrapper">
                     <div class="api-debug-widget" id="apiDebugWidget">
                         <span class="api-status-dot checking" id="apiStatusDot"></span>
-                        <span class="api-status-text" id="apiStatusText">OpenAI API...</span>
-                        <button type="button" class="btn-check-api" id="btnCheckApi"> Check</button>
+                        <span class="api-status-text" id="apiStatusText">OpenAI API</span>
+                        <button type="button" class="btn-check-api" id="btnCheckApi">Check</button>
                     </div>
                     <div class="api-details-tooltip" id="apiDetailsTooltip">Loading status information...</div>
                 </div>
-                <div class="api-debug-wrapper" style="margin-top: 10px;">
+
+                <div class="api-debug-wrapper">
                     <div class="api-debug-widget" id="geminiDebugWidget">
                         <span class="api-status-dot checking" id="geminiStatusDot"></span>
-                        <span class="api-status-text" id="geminiStatusText">Gemini API...</span>
-                        <button type="button" class="btn-check-api" id="btnCheckGemini"> Check</button>
+                        <span class="api-status-text" id="geminiStatusText">Gemini API</span>
+                        <button type="button" class="btn-check-api" id="btnCheckGemini">Check</button>
                     </div>
                     <div class="api-details-tooltip" id="geminiDetailsTooltip">Loading status information...</div>
                 </div>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
+        <!-- ══════════════════ MAIN CONTENT ══════════════════ -->
         <main class="main-content">
             <div class="content-wrapper">
-                <!-- TAB 1: CREATE VIDEO -->
-            <div id="create-video-tab" class="tab-content">
-                <form id="uploadForm" class="upload-form">
-                    <div class="form-section">
-                        <label for="audio">
-                            <span class="icon"></span>
-                            Audio File (MP3)
-                            <span class="file-name" id="audioFileName" style="display: none; font-size: 0.85em; color: var(--text-secondary); margin-top: 5px; font-weight: normal;"></span>
-                            <input type="file" id="audio" name="audio" accept=".mp3" required>
-                        </label>
-                    </div>
 
-                    <div class="form-section">
-                        <label for="script">
-                            <span class="icon"></span>
-                            Script File (TXT)
-                            <span class="file-name" id="scriptFileName" style="display: none; font-size: 0.85em; color: var(--text-secondary); margin-top: 5px; font-weight: normal;"></span>
-                            <input type="file" id="script" name="script" accept=".txt" required>
-                        </label>
-                    </div>
+                <!-- ══════════ TAB 1: TRỢ LÝ KỊCH BẢN AI ══════════ -->
+                <div id="script-assistant-tab" class="tab-content active">
 
-                    <div class="form-section">
-                        <div class="image-uploader-container">
-                            <div class="upload-trigger" id="uploadTrigger">
-                                <span class="icon"></span>
-                                <span>Add Scene Images</span>
-                                <p class="upload-hint">Click to add scene images sequentially</p>
-                                <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
-                            </div>
-                            <div id="imagePreview" class="image-preview"></div>
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header-icon violet">✍️</div>
+                        <div class="page-header-body">
+                            <h2>Trợ Lý Kịch Bản AI</h2>
+                            <p>Dán kịch bản thô, AI sẽ tự động phân chia thành từng scene và viết prompt hình ảnh. Có thể trích xuất nội dung từ video YouTube.</p>
                         </div>
                     </div>
 
-                    <div class="form-section">
-                        <label for="backgroundImage">
-                            <span class="icon"></span>
-                            Background Image (Optional - Auto-Overlay Foreground)
-                            <span class="file-name" id="bgImageFileName" style="display: none; font-size: 0.85em; color: var(--text-secondary); margin-top: 5px; font-weight: normal;"></span>
-                            <input type="file" id="backgroundImage" name="backgroundImage" accept=".png,.jpg,.jpeg">
-                        </label>
-                    </div>
+                    <div class="ai-assistant-container">
 
-                    <div class="form-section" id="bgModeSection" style="display: none;">
-                        <label for="backgroundMode">
-                            <span class="icon"></span>
-                            Background Removal Mode (Chế độ tách nền)
-                            <select id="backgroundMode" name="backgroundMode">
-                                <option value="whitekey" selected>Tranh vẽ / Sketch (Tách nền trắng - Giữ nét vẽ)</option>
-                                <option value="rembg">Tự động AI (Rembg - Tốt cho ảnh chụp)</option>
-                            </select>
-                        </label>
-                    </div>
-
-                    <!-- Background Music (No Icons) -->
-                    <div class="form-section">
-                        <label for="bgm" id="bgmLabel">
-                            Tải nhạc nền (Tùy chọn)
-                            <span class="file-name" id="bgmFileName" style="display: none; font-size: 0.85em; color: var(--text-secondary); margin-top: 5px; font-weight: normal;"></span>
-                            <input type="file" id="bgm" name="bgm" accept=".mp3,.wav,.ogg,.m4a">
-                        </label>
-                    </div>
-
-                    <!-- Background Music Volume (No Icons) -->
-                    <div class="form-section" id="bgmVolumeContainer" style="display: none;">
-                        <div class="volume-slider-wrapper">
-                            <div class="volume-slider-header">
-                                <span>Âm lượng nhạc nền</span>
-                                <span id="bgmVolumeValText">30%</span>
+                        <!-- Extract from YouTube -->
+                        <div class="section-card">
+                            <div class="section-card-header violet">
+                                <span class="section-card-header-icon">🔗</span>
+                                <span class="section-card-header-title">Trích Xuất Từ YouTube</span>
                             </div>
-                            <input type="range" id="bgmVolume" min="0" max="100" value="30">
-                        </div>
-                    </div>
-
-                    <!-- Aspect Ratio Selector -->
-                    <div class="form-section">
-                        <label for="aspectRatio">
-                            <span class="icon"></span>
-                            Video Aspect Ratio (Tỷ lệ khung hình)
-                            <select id="aspectRatio" name="aspectRatio">
-                                <option value="16:9" selected>Ngang 16:9 (YouTube, Máy tính)</option>
-                                <option value="9:16">Dọc 9:16 (TikTok, Shorts, Reels)</option>
-                            </select>
-                        </label>
-                    </div>
-
-                    <!-- Video Speed Selector -->
-                    <div class="form-section">
-                        <div class="volume-slider-wrapper">
-                            <div class="volume-slider-header">
-                                <span>Tốc độ video (Video Speed)</span>
-                                <span id="videoSpeedValText">1.00x</span>
-                            </div>
-                            <input type="range" id="videoSpeed" name="videoSpeed" min="0.5" max="2.0" step="0.05" value="1.0">
-                        </div>
-                    </div>
-
-                    
-
-                    <button type="submit" class="btn-submit">Create Video</button>
-                </form>
-            </div>
-
-            <!-- TAB 2: AI SCRIPT ASSISTANT -->
-            <div id="script-assistant-tab" class="tab-content active">
-                <div class="ai-assistant-container">
-                    
-                    <!-- Extract Content Section -->
-                    <div class="form-section" style="margin-bottom: 24px;">
-                        <label for="videoExtractUrl" style="cursor: default; padding: 20px 16px;">
-                            <span class="icon">🔗</span>
-                            <span>Trích xuất nội dung từ Video (AI)</span>
-                            <p class="upload-hint">Dán link YouTube vào đây, AI sẽ đọc toàn bộ nội dung và điền vào kịch bản bên dưới.</p>
-                        </label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="videoExtractUrl" class="custom-textarea" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);" placeholder="https://www.youtube.com/watch?v=...">
-                            <button id="btnExtractVideo" type="button" class="btn-secondary-action" style="padding: 12px 24px; white-space: nowrap;"> Trích xuất</button>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <label for="rawScriptText" style="cursor: default;">
-                            <span class="icon"></span>
-                            <span>Dán kịch bản thô của bạn</span>
-                            <p class="upload-hint">Dán ý tưởng, văn bản tự do. AI sẽ tự động phân nhỏ thành từng Scene và viết prompt vẽ hình</p>
-                        </label>
-                        <textarea id="rawScriptText" placeholder="Ví dụ: Người thành công không phải là người thông minh nhất, mà là người nỗ lực nhiều nhất. Hãy luôn kiên trì vượt qua khó khăn nhé..." rows="6" class="custom-textarea"></textarea>
-                    </div>
-                    <div style="display: flex; gap: 12px; margin-top: 15px;">
-                        <button id="btnGenerateScenes" type="button" class="btn-submit" style="flex: 1;"> Tạo Phân Cảnh Bằng Gemini AI</button>
-                        <button id="btnGenerateMetadata" type="button" class="btn-submit" style="flex: 1; background-color: #8b5cf6;"> Tự Động Viết Tiêu Đề & Mô Tả</button>
-                    </div>
-
-                    <div id="aiProgress" class="ai-progress" style="display: none;">
-                        <div class="spinner" style="margin: 0 auto 10px auto; width: 24px; height: 24px;"></div>
-                        <p id="aiProgressText">Đang phân tích kịch bản thô...</p>
-                    </div>
-
-                    <div id="aiMetadataProgress" class="ai-progress" style="display: none; margin-top: 15px;">
-                        <div class="spinner" style="margin: 0 auto 10px auto; width: 24px; height: 24px;"></div>
-                        <p id="aiMetadataProgressText">Đang viết tiêu đề & mô tả...</p>
-                    </div>
-
-                    <div id="aiMetadataResults" class="ai-results" style="display: none; margin-top: 24px;">
-                        <div class="form-section" style="margin-top: 20px;">
-                            <h3> Video Metadata (Cho YouTube / TikTok)</h3>
-                            <p class="upload-hint" style="margin-bottom: 8px;">Dùng để dán trực tiếp lên các nền tảng mạng xã hội</p>
-                            
-                            <label style="margin-bottom: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Tiêu đề:</label>
-                            <div class="textarea-container" style="position: relative; margin-bottom: 15px;">
-                                <input type="text" id="aiMetadataTitle" readonly class="custom-textarea readonly-textarea" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;">
-                                <button id="btnCopyTitle" type="button" class="btn-copy" style="top: 10px;"> Sao chép</button>
-                            </div>
-
-                            <label style="margin-bottom: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Mô tả & Hashtags:</label>
-                            <div class="textarea-container">
-                                <textarea id="aiMetadataDesc" readonly rows="6" class="custom-textarea readonly-textarea"></textarea>
-                                <button id="btnCopyDesc" type="button" class="btn-copy"> Sao chép</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="aiResults" class="ai-results" style="display: none; margin-top: 24px;">
-                        <div class="form-section" style="margin-top: 20px;">
-                            <h3> Phân Cảnh & Prompt Hình Ảnh (WhiskLab)</h3>
-                            <p class="upload-hint" style="margin-bottom: 8px;">Sao chép danh sách này để tự vẽ các ảnh bằng AI</p>
-                            <div class="textarea-container">
-                                <textarea id="aiScenesOutput" readonly rows="8" class="custom-textarea readonly-textarea"></textarea>
-                                <button id="btnCopyScenes" type="button" class="btn-copy"> Sao chép</button>
-                            </div>
-                            <!-- Copy individual prompts -->
-                            <div id="individualCopyButtonsContainer" style="margin-top: 15px; display: none;">
-                                <strong style="display:block; margin-bottom:8px; font-size: 0.9em; color: var(--text-secondary);">Sao chép thủ công từng phần:</strong>
-                                <div id="individualCopyButtons" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-                            </div>
-                            <!-- Gửi từng prompt sang Google Flow -->
-                            <div id="flowAiContainer" style="margin-top: 15px; display: none;">
-                                <strong style="display:block; margin-bottom:10px;">Tự động gửi sang Google Flow:</strong>
-                                <div id="flowAiButtons" style="display: flex; flex-direction: column; gap: 8px;"></div>
-                            </div>
-                        </div>
-
-                        <div class="form-section" style="margin-top: 20px;">
-                            <h3> Kịch Bản Đã Tách Phân Cảnh (Để tạo video)</h3>
-                            <p class="upload-hint" style="margin-bottom: 8px;">Lời thoại của video sau khi đã phân chia chuẩn</p>
-                            <div class="textarea-container">
-                                <textarea id="aiScriptOutput" readonly rows="6" class="custom-textarea readonly-textarea"></textarea>
-                                <button id="btnCopyScript" type="button" class="btn-copy"> Sao chép</button>
-                            </div>
-                            <div style="display: flex; gap: 12px; margin-top: 15px;">
-                                <button id="btnApplyScript" type="button" class="btn-secondary-action" style="flex: 1; padding: 12px 20px;"> Tự động điền vào Form</button>
-                                <button id="btnDownloadScriptText" type="button" class="btn-secondary-action" style="flex: 1; padding: 12px 20px;"> Tải file .txt</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB 3: AUDIO GENERATOR -->
-            <div id="audio-gen-tab" class="tab-content">
-                <div class="ai-assistant-container">
-                    <div class="form-section">
-                        <h3> 🎙️ Chuyển Văn Bản Thành Giọng Nói AI</h3>
-                        <p class="upload-hint">Sử dụng kịch bản đã tách ở Trợ Lý Kịch Bản AI, hoặc tự dán kịch bản của bạn vào đây.</p>
-                        
-                        <div style="margin-top: 15px;">
-                            <button id="btnFetchFromAI" type="button" class="btn-secondary-action" style="padding: 10px 15px; margin-bottom: 10px;"> Lấy kịch bản từ Trợ lý AI</button>
-                            <textarea id="ttsInput" rows="12" class="custom-textarea" placeholder="Dán hoặc gõ kịch bản bạn muốn đọc vào đây..."></textarea>
-                        </div>
-
-                        <div style="margin-top: 15px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.9em; color: #cbd5e1;">Chọn Nhà Cung Cấp (Provider):</label>
-                            <select id="ttsProvider" class="custom-textarea" style="height: auto; padding: 10px; margin-bottom: 15px;">
-                                <option value="viettel">Viettel AI (Tiếng Việt - Quỳnh Anh)</option>
-                                <option value="elevenlabs">ElevenLabs (Chất lượng cao)</option>
-                            </select>
-                        </div>
-                        
-                        <div style="display: flex; gap: 12px;">
-                            <button id="btnGenerateTts" type="button" class="btn-submit" style="flex: 1; background-color: #f59e0b;"> 🎙️ Tạo Audio ngay</button>
-                        </div>
-                        
-                        <div id="ttsResultContainer" style="display: none; margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.15); border-radius: 8px;">
-                            <h4 style="margin-bottom: 10px; color: #e2e8f0; font-size: 0.95em;">Nghe Thử & Sử Dụng</h4>
-                            <audio id="ttsAudioPreview" controls style="width: 100%; margin-bottom: 15px; outline: none; border-radius: 4px;"></audio>
-                            <div style="display: flex; gap: 12px;">
-                                <button id="btnDownloadTts" type="button" class="btn-secondary-action" style="flex: 1;">⬇️ Tải xuống MP3</button>
-                                <button id="btnApplyTtsToVideo" type="button" class="btn-submit" style="flex: 1; background-color: #10b981;">✅ Dùng cho Tạo Video</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB 4: AI IMAGE GENERATOR -->
-            <div id="image-gen-tab" class="tab-content">
-                <div class="ai-assistant-container">
-
-                    <!-- Header Section -->
-                    <div class="img-gen-header">
-                        <p class="upload-hint">Tự động tạo ảnh cho từng scene bằng Gemini AI. Ảnh được lưu vào server và hiển thị trực tiếp.</p>
-                    </div>
-
-                    <!-- Video ID + Import prompts -->
-                    <div class="form-section" style="margin-top: 16px;">
-                        <div class="img-gen-controls">
-                            <div class="img-gen-field">
-                                <label class="field-label" for="imgGenVideoId">Video ID</label>
-                                <div class="img-gen-input-row">
-                                    <input type="text" id="imgGenVideoId" class="img-gen-text-input" placeholder="e.g. my-video-2024" />
-                                    <button type="button" id="btnGenVideoId" class="btn-gen-id" title="Tạo ID ngẫu nhiên"> Tạo ID</button>
+                            <div class="section-card-body">
+                                <p class="upload-hint">Dán link YouTube vào đây, AI sẽ đọc toàn bộ nội dung và điền vào kịch bản bên dưới.</p>
+                                <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                    <input type="text" id="videoExtractUrl" class="custom-textarea"
+                                        style="flex: 1; padding: 11px 14px; margin-top: 0;"
+                                        placeholder="https://www.youtube.com/watch?v=...">
+                                    <button id="btnExtractVideo" type="button" class="btn-secondary-action" style="white-space: nowrap; padding: 11px 20px; margin: 0;">
+                                        🔍 Trích xuất
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Prompts input area -->
-                    <div class="form-section" style="margin-top: 16px;">
-                        <div class="img-gen-prompts-header">
-                            <label class="field-label">Danh sách Prompts (mỗi dòng = 1 scene)</label>
-                            <button type="button" id="btnImportPrompts" class="btn-import-prompts"> Lấy từ Tab AI</button>
+                        <!-- Raw Script Input -->
+                        <div class="section-card">
+                            <div class="section-card-header indigo">
+                                <span class="section-card-header-icon">📝</span>
+                                <span class="section-card-header-title">Kịch Bản Thô</span>
+                            </div>
+                            <div class="section-card-body">
+                                <p class="upload-hint">Dán ý tưởng, văn bản tự do. AI sẽ tự động phân nhỏ thành từng Scene và viết prompt vẽ hình.</p>
+                                <textarea id="rawScriptText"
+                                    placeholder="Ví dụ: Người thành công không phải là người thông minh nhất, mà là người nỗ lực nhiều nhất. Hãy luôn kiên trì vượt qua khó khăn nhé..."
+                                    rows="6" class="custom-textarea" style="margin-top: 8px;"></textarea>
+                                <div style="display: flex; gap: 12px; margin-top: 4px;">
+                                    <button id="btnGenerateScenes" type="button" class="btn-submit" style="flex: 1;">
+                                        ✨ Tạo Phân Cảnh Bằng AI
+                                    </button>
+                                    <button id="btnGenerateMetadata" type="button" class="btn-submit" style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
+                                        📋 Viết Tiêu Đề & Mô Tả
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <textarea id="imgGenPrompts" class="custom-textarea img-gen-textarea"
-                            placeholder="Scene 1: A detailed fantasy landscape with mountains and fog...&#10;Scene 2: A warrior standing on a cliff at sunset...&#10;Scene 3: ..."
-                            rows="6"></textarea>
-                        <p class="upload-hint" style="margin-top:6px;">Mỗi dòng là một prompt. Có thể import từ Tab Trợ Lý AI hoặc paste thủ công.</p>
-                    </div>
 
-                    <!-- Action buttons -->
-                    <div style="display: flex; gap: 12px; margin-top: 18px;">
-                        <button id="btnStartImageGen" type="button" class="btn-submit" style="flex: 1;"> Bắt Đầu Tạo Ảnh</button>
-                        <button id="btnDownloadAllImages" type="button" class="btn-submit" style="flex: 0 0 auto; background: #7c3aed; display:none;"> Tải Tất Cả (ZIP)</button>
-                    </div>
+                        <!-- AI Progress -->
+                        <div id="aiProgress" class="ai-progress" style="display: none;">
+                            <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px;"></div>
+                            <p id="aiProgressText">Đang phân tích kịch bản thô...</p>
+                        </div>
 
-                    <!-- Progress -->
-                    <div id="imgGenProgress" style="display:none; margin-top: 24px;">
-                        <div class="img-gen-progress-header">
-                            <span id="imgGenProgressLabel">Đang khởi động...</span>
-                            <span id="imgGenProgressCount">0 / 0</span>
+                        <div id="aiMetadataProgress" class="ai-progress" style="display: none;">
+                            <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px;"></div>
+                            <p id="aiMetadataProgressText">Đang viết tiêu đề & mô tả...</p>
                         </div>
-                        <div class="img-gen-progress-bar-wrap">
-                            <div class="img-gen-progress-bar" id="imgGenProgressBar" style="width:0%"></div>
-                        </div>
-                    </div>
 
-                    <!-- Image Grid -->
-                    <div id="imgGenGrid" class="image-gen-grid" style="margin-top:24px;"></div>
+                        <!-- Metadata Results -->
+                        <div id="aiMetadataResults" class="ai-results" style="display: none;">
+                            <div class="section-card">
+                                <div class="section-card-header amber">
+                                    <span class="section-card-header-icon">📣</span>
+                                    <span class="section-card-header-title">Video Metadata (YouTube / TikTok)</span>
+                                </div>
+                                <div class="section-card-body">
+                                    <div>
+                                        <p class="field-label-text">Tiêu đề</p>
+                                        <div class="textarea-container">
+                                            <input type="text" id="aiMetadataTitle" readonly class="custom-textarea readonly-textarea" style="margin-top: 0; padding-right: 90px;">
+                                            <button id="btnCopyTitle" type="button" class="btn-copy">📋 Sao chép</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="field-label-text">Mô tả & Hashtags</p>
+                                        <div class="textarea-container">
+                                            <textarea id="aiMetadataDesc" readonly rows="5" class="custom-textarea readonly-textarea" style="margin-top: 0; padding-right: 90px;"></textarea>
+                                            <button id="btnCopyDesc" type="button" class="btn-copy">📋 Sao chép</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    <!-- Error -->
-                    <div id="imgGenError" class="img-gen-error" style="display:none;"></div>
+                        <!-- Scene & Script Results -->
+                        <div id="aiResults" class="ai-results" style="display: none;">
+                            <div class="section-card" style="margin-top: 4px;">
+                                <div class="section-card-header violet">
+                                    <span class="section-card-header-icon">🖼️</span>
+                                    <span class="section-card-header-title">Phân Cảnh & Prompt Hình Ảnh</span>
+                                </div>
+                                <div class="section-card-body">
+                                    <p class="upload-hint">Sao chép danh sách này để tự vẽ các ảnh bằng AI (WhiskLab, Midjourney...)</p>
+                                    <div class="textarea-container" style="margin-top: 8px;">
+                                        <textarea id="aiScenesOutput" readonly rows="8" class="custom-textarea readonly-textarea" style="padding-right: 90px;"></textarea>
+                                        <button id="btnCopyScenes" type="button" class="btn-copy">📋 Sao chép</button>
+                                    </div>
+                                    <!-- Individual copy buttons -->
+                                    <div id="individualCopyButtonsContainer" style="margin-top: 12px; display: none;">
+                                        <p class="field-label-text">Sao chép từng phần</p>
+                                        <div id="individualCopyButtons" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                                    </div>
+                                    <!-- Send to Google Flow -->
+                                    <div id="flowAiContainer" style="margin-top: 12px; display: none;">
+                                        <p class="field-label-text">Gửi sang Google Flow</p>
+                                        <div id="flowAiButtons" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                                    </div>
+                                </div>
+                            </div>
 
-                </div>
-            </div>
+                            <div class="section-card" style="margin-top: 4px;">
+                                <div class="section-card-header emerald">
+                                    <span class="section-card-header-icon">📄</span>
+                                    <span class="section-card-header-title">Kịch Bản Đã Tách Phân Cảnh</span>
+                                </div>
+                                <div class="section-card-body">
+                                    <p class="upload-hint">Lời thoại của video sau khi đã phân chia chuẩn. Dùng để tạo video.</p>
+                                    <div class="textarea-container" style="margin-top: 8px;">
+                                        <textarea id="aiScriptOutput" readonly rows="6" class="custom-textarea readonly-textarea" style="padding-right: 90px;"></textarea>
+                                        <button id="btnCopyScript" type="button" class="btn-copy">📋 Sao chép</button>
+                                    </div>
+                                    <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                        <button id="btnApplyScript" type="button" class="btn-secondary-action" style="flex: 1;">
+                                            ⚡ Điền vào Form Tạo Video
+                                        </button>
+                                        <button id="btnDownloadScriptText" type="button" class="btn-secondary-action" style="flex: 1;">
+                                            ⬇️ Tải file .txt
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-            <div id="progress" class="progress-section" style="display: none;">
-                <h2> Creating Your Video</h2>
-                <p class="progress-subtitle">Please wait, we are assembling your story...</p>
-                <div class="progress-container">
-                    <div class="progress-bar">
-                        <div id="progressFill" class="progress-fill"></div>
-                    </div>
-                </div>
-                <p id="progressText">Initializing...</p>
-                <ul id="progressSteps" class="progress-steps">
-                    <li id="step-rembg" class="step">
-                        <div class="step-status"><span class="step-bullet"></span></div>
-                        <div class="step-content">
-                            <span class="step-title">Separate Foreground &amp; Overlay (Rembg)</span>
-                            <span class="step-desc">Extracting foreground and overlaying on background</span>
-                        </div>
-                    </li>
-                    <li id="step-whisper" class="step">
-                        <div class="step-status"><span class="step-bullet"></span></div>
-                        <div class="step-content">
-                            <span class="step-title">Extract Audio Timestamps</span>
-                            <span class="step-desc">Analyzing voice timeline with Whisper AI</span>
-                        </div>
-                    </li>
-                    <li id="step-parse" class="step">
-                        <div class="step-status"><span class="step-bullet"></span></div>
-                        <div class="step-content">
-                            <span class="step-title">Parse Script &amp; Scenes</span>
-                            <span class="step-desc">Analyzing text file structure and timestamps</span>
-                        </div>
-                    </li>
-                    <li id="step-timeline" class="step">
-                        <div class="step-status"><span class="step-bullet"></span></div>
-                        <div class="step-content">
-                            <span class="step-title">Generate Matching Timeline</span>
-                            <span class="step-desc">Matching script sections to audio timings</span>
-                        </div>
-                    </li>
-                    <li id="step-subtitle" class="step">
-                        <div class="step-status"><span class="step-bullet"></span></div>
-                        <div class="step-content">
-                            <span class="step-title">Create Subtitle Track</span>
-                            <span class="step-desc">Compiling subtitles into SRT file format</span>
-                        </div>
-                    </li>
-                    <li id="step-ffmpeg" class="step">
-                        <div class="step-status"><span class="step-bullet"></span></div>
-                        <div class="step-content">
-                            <span class="step-title">Render Video with FFmpeg</span>
-                            <span class="step-desc">Composing scenes, merging audio, and burning subtitles</span>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-
-            <div id="success" class="success-section" style="display: none;">
-                <h2> Video Created Successfully!</h2>
-                <p>Preview your generated video below before download:</p>
-                <div class="video-preview-container">
-                    <video id="videoPreviewPlayer" controls>
-                        Your browser does not support the HTML5 video tag.
-                    </video>
-                </div>
-                <div class="success-actions">
-                    <a id="downloadLink" href="#" class="btn-download"> Download Video</a>
-                    <button onclick="location.reload()" class="btn-secondary-action"> Create Another</button>
-                </div>
-
-                <!-- YouTube Upload Section -->
-                <div id="youtubeUploadSection" class="form-section" style="margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; text-align: left;">
-                    <h3> Upload to YouTube</h3>
-                    <div id="youtubeAuthSection">
-                        <p class="upload-hint">Kết nối tài khoản YouTube để đăng video trực tiếp.</p>
-                        <button id="btnYoutubeConnect" type="button" class="btn-secondary-action" style="background-color: #ef4444; border-color: #ef4444;"> Kết nối YouTube</button>
-                    </div>
-                    
-                    <div id="youtubeFormSection" style="display: none; margin-top: 15px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                            <p class="upload-hint" style="color: #10b981; margin: 0;">✅ Đã kết nối YouTube</p>
-                            <button id="btnYoutubeLogout" type="button" class="btn-secondary-action" style="padding: 4px 10px; font-size: 0.8em; margin: 0; border-color: rgba(255,255,255,0.2);">Đăng xuất</button>
-                        </div>
-                        <label style="margin-top: 10px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Tiêu đề:</label>
-                        <input type="text" id="ytTitle" class="custom-textarea" style="width: 100%; padding: 12px; margin-bottom: 10px;">
-                        
-                        <label style="margin-top: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Mô tả:</label>
-                        <textarea id="ytDescription" rows="4" class="custom-textarea" style="width: 100%; margin-bottom: 10px;"></textarea>
-                        
-                        <label style="margin-top: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Tags (cách nhau bằng dấu phẩy):</label>
-                        <input type="text" id="ytTags" class="custom-textarea" style="width: 100%; padding: 12px; margin-bottom: 10px;">
-
-                        <label style="margin-top: 5px; display: block; font-weight: bold; font-size: 0.9em; color: var(--text-secondary);">Trạng thái:</label>
-                        <select id="ytPrivacy" class="custom-textarea" style="width: 100%; padding: 12px; margin-bottom: 15px; background: rgba(255,255,255,0.05); color: white;">
-                            <option value="private">Riêng tư (Private)</option>
-                            <option value="unlisted">Không công khai (Unlisted)</option>
-                            <option value="public">Công khai (Public)</option>
-                        </select>
-
-                        <button id="btnYoutubeUpload" type="button" class="btn-submit" style="width: 100%; background-color: #ef4444;"> Tải lên YouTube</button>
-                        
-                        <div id="ytUploadProgress" style="display: none; margin-top: 15px; text-align: center;">
-                            <div class="spinner" style="margin: 0 auto 10px auto; width: 24px; height: 24px;"></div>
-                            <p id="ytUploadStatus">Đang tải lên...</p>
-                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div id="error" class="error-section" style="display: none;">
-                <h2> Error</h2>
-                <p id="errorMessage"></p>
-                <button onclick="location.reload()" class="btn-retry">Try Again</button>
-            </div>
-            </div>
+                <!-- ══════════ TAB 2: TẠO AUDIO AI ══════════ -->
+                <div id="audio-gen-tab" class="tab-content">
+
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header-icon amber">🎙️</div>
+                        <div class="page-header-body">
+                            <h2>Tạo Audio AI</h2>
+                            <p>Chuyển kịch bản thành giọng nói tự nhiên bằng Viettel AI hoặc ElevenLabs. Sau khi tạo xong, áp dụng trực tiếp vào video.</p>
+                        </div>
+                    </div>
+
+                    <div class="ai-assistant-container">
+
+                        <!-- Script Input -->
+                        <div class="section-card">
+                            <div class="section-card-header amber">
+                                <span class="section-card-header-icon">📝</span>
+                                <span class="section-card-header-title">Kịch Bản Cần Đọc</span>
+                            </div>
+                            <div class="section-card-body">
+                                <button id="btnFetchFromAI" type="button" class="btn-secondary-action" style="align-self: flex-start;">
+                                    ⟵ Lấy từ Trợ Lý Kịch Bản
+                                </button>
+                                <textarea id="ttsInput" rows="10" class="custom-textarea"
+                                    placeholder="Dán hoặc gõ kịch bản bạn muốn đọc vào đây..." style="margin-top: 4px;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Provider Selection -->
+                        <div class="section-card">
+                            <div class="section-card-header indigo">
+                                <span class="section-card-header-icon">🔌</span>
+                                <span class="section-card-header-title">Nhà Cung Cấp Giọng Nói</span>
+                            </div>
+                            <div class="section-card-body">
+                                <!-- Hidden select for compatibility -->
+                                <select id="ttsProvider" style="display: none;">
+                                    <option value="viettel">Viettel AI</option>
+                                    <option value="elevenlabs">ElevenLabs</option>
+                                </select>
+
+                                <div class="provider-cards">
+                                    <div class="provider-card selected" data-provider="viettel" onclick="selectProvider('viettel')">
+                                        <div class="provider-card-radio"></div>
+                                        <div class="provider-card-icon">🇻🇳</div>
+                                        <div class="provider-card-info">
+                                            <div class="provider-card-name">Viettel AI</div>
+                                            <div class="provider-card-desc">Giọng Quỳnh Anh — Tiếng Việt tự nhiên</div>
+                                        </div>
+                                        <span class="provider-card-badge">Khuyên dùng</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="elevenlabs" onclick="selectProvider('elevenlabs')">
+                                        <div class="provider-card-radio"></div>
+                                        <div class="provider-card-icon">⚡</div>
+                                        <div class="provider-card-info">
+                                            <div class="provider-card-name">ElevenLabs</div>
+                                            <div class="provider-card-desc">Chất lượng cao — Studio-grade voice</div>
+                                        </div>
+                                        <span class="provider-card-badge amber">Premium</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="btnGenerateTts" type="button" class="btn-submit btn-submit-large">
+                            🎙️ Tạo Audio Ngay
+                        </button>
+
+                        <!-- Result -->
+                        <div id="ttsResultContainer" style="display: none;">
+                            <div class="tts-result-card">
+                                <h4>✅ Nghe Thử & Sử Dụng</h4>
+                                <audio id="ttsAudioPreview" controls></audio>
+                                <div style="display: flex; gap: 10px;">
+                                    <button id="btnDownloadTts" type="button" class="btn-secondary-action" style="flex: 1;">
+                                        ⬇️ Tải xuống MP3
+                                    </button>
+                                    <button id="btnApplyTtsToVideo" type="button" class="btn-submit" style="flex: 1; background: linear-gradient(135deg, #10b981, #059669);">
+                                        ⚡ Dùng cho Tạo Video
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ══════════ TAB 3: RENDER VIDEO ══════════ -->
+                <div id="create-video-tab" class="tab-content">
+
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header-icon indigo">🎬</div>
+                        <div class="page-header-body">
+                            <h2>Render Video</h2>
+                            <p>Tổng hợp audio, ảnh và nhạc nền thành video hoàn chỉnh với phụ đề tự động. Hỗ trợ xuất ngang (16:9) và dọc (9:16).</p>
+                        </div>
+                    </div>
+
+                    <form id="uploadForm" class="upload-form">
+
+                        <!-- GROUP 1: Nguồn dữ liệu -->
+                        <div class="section-card">
+                            <div class="section-card-header indigo">
+                                <span class="section-card-header-icon">📁</span>
+                                <span class="section-card-header-title">Nguồn Dữ Liệu</span>
+                            </div>
+                            <div class="section-card-body">
+
+                                <!-- Audio -->
+                                <div class="form-section">
+                                    <label for="audio">
+                                        <span class="icon">🎵</span>
+                                        <span>Chọn file Audio (MP3)</span>
+                                        <span class="upload-hint">Giọng đọc chính của video</span>
+                                        <span class="file-name" id="audioFileName" style="display: none;"></span>
+                                        <input type="file" id="audio" name="audio" accept=".mp3" required>
+                                    </label>
+                                </div>
+
+                                <!-- Script -->
+                                <div class="form-section">
+                                    <label for="script">
+                                        <span class="icon">📄</span>
+                                        <span>Chọn file Kịch Bản (TXT)</span>
+                                        <span class="upload-hint">File văn bản đã phân cảnh</span>
+                                        <span class="file-name" id="scriptFileName" style="display: none;"></span>
+                                        <input type="file" id="script" name="script" accept=".txt" required>
+                                    </label>
+                                </div>
+
+                                <!-- Scene Images -->
+                                <div class="form-section">
+                                    <div class="image-uploader-container">
+                                        <div class="upload-trigger" id="uploadTrigger">
+                                            <span class="icon">🖼️</span>
+                                            <span>Thêm Ảnh Scene</span>
+                                            <p class="upload-hint">Click để chọn ảnh cho từng scene (theo thứ tự)</p>
+                                            <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
+                                        </div>
+                                        <div id="imagePreview" class="image-preview"></div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- GROUP 2: Nền & Hiệu ứng -->
+                        <div class="section-card">
+                            <div class="section-card-header amber">
+                                <span class="section-card-header-icon">🎨</span>
+                                <span class="section-card-header-title">Nền & Hiệu Ứng</span>
+                            </div>
+                            <div class="section-card-body">
+
+                                <!-- Background Image -->
+                                <div class="form-section">
+                                    <label for="backgroundImage">
+                                        <span class="icon">🌄</span>
+                                        <span>Ảnh Nền (Tùy chọn)</span>
+                                        <span class="upload-hint">Nếu chọn, ảnh scene sẽ được tách nền và đặt lên trên ảnh nền này</span>
+                                        <span class="file-name" id="bgImageFileName" style="display: none;"></span>
+                                        <input type="file" id="backgroundImage" name="backgroundImage" accept=".png,.jpg,.jpeg">
+                                    </label>
+                                </div>
+
+                                <!-- Background Mode -->
+                                <div class="form-section" id="bgModeSection" style="display: none;">
+                                    <p class="field-label-text">Chế độ tách nền <span>(xuất hiện khi có ảnh nền)</span></p>
+                                    <select id="backgroundMode" name="backgroundMode">
+                                        <option value="whitekey" selected>🖌️ Tranh vẽ / Sketch — Tách nền trắng, giữ nét vẽ</option>
+                                        <option value="rembg">🤖 Tự động AI (Rembg) — Tốt cho ảnh chụp thực tế</option>
+                                    </select>
+                                </div>
+
+                                <!-- Background Music -->
+                                <div class="form-section">
+                                    <label for="bgm" id="bgmLabel">
+                                        <span class="icon">🎶</span>
+                                        <span>Nhạc Nền (Tùy chọn)</span>
+                                        <span class="upload-hint">MP3, WAV, OGG, M4A — phát song song với giọng đọc</span>
+                                        <span class="file-name" id="bgmFileName" style="display: none;"></span>
+                                        <input type="file" id="bgm" name="bgm" accept=".mp3,.wav,.ogg,.m4a">
+                                    </label>
+                                </div>
+
+                                <!-- BGM Volume -->
+                                <div class="form-section" id="bgmVolumeContainer" style="display: none;">
+                                    <div class="volume-slider-wrapper">
+                                        <div class="volume-slider-header">
+                                            <span>🔊 Âm lượng nhạc nền</span>
+                                            <span id="bgmVolumeValText">30%</span>
+                                        </div>
+                                        <input type="range" id="bgmVolume" min="0" max="100" value="30">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- GROUP 3: Cài đặt xuất -->
+                        <div class="section-card">
+                            <div class="section-card-header emerald">
+                                <span class="section-card-header-icon">⚙️</span>
+                                <span class="section-card-header-title">Cài Đặt Xuất Video</span>
+                            </div>
+                            <div class="section-card-body">
+
+                                <!-- Aspect Ratio -->
+                                <div class="form-section">
+                                    <p class="field-label-text">Tỷ lệ khung hình</p>
+                                    <select id="aspectRatio" name="aspectRatio">
+                                        <option value="16:9" selected>📺 16:9 — Ngang (YouTube, Máy tính)</option>
+                                        <option value="9:16">📱 9:16 — Dọc (TikTok, Shorts, Reels)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Video Speed -->
+                                <div class="form-section">
+                                    <div class="volume-slider-wrapper">
+                                        <div class="volume-slider-header">
+                                            <span>⏩ Tốc độ video</span>
+                                            <span id="videoSpeedValText">1.00x</span>
+                                        </div>
+                                        <input type="range" id="videoSpeed" name="videoSpeed" min="0.5" max="2.0" step="0.05" value="1.0">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <button type="submit" class="btn-submit btn-submit-large">
+                            🚀 Bắt Đầu Tạo Video
+                        </button>
+
+                    </form>
+                </div>
+
+                <!-- ══════════ TAB 4: AI IMAGE GENERATOR (ẩn trong menu) ══════════ -->
+                <div id="image-gen-tab" class="tab-content">
+                    <div class="ai-assistant-container">
+
+                        <div class="page-header">
+                            <div class="page-header-icon violet">🖼️</div>
+                            <div class="page-header-body">
+                                <h2>Tạo Ảnh AI</h2>
+                                <p>Tự động tạo ảnh cho từng scene bằng Gemini AI. Ảnh được lưu vào server và hiển thị trực tiếp.</p>
+                            </div>
+                        </div>
+
+                        <!-- Video ID -->
+                        <div class="section-card">
+                            <div class="section-card-header indigo">
+                                <span class="section-card-header-icon">🆔</span>
+                                <span class="section-card-header-title">Video ID</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="img-gen-input-row">
+                                    <input type="text" id="imgGenVideoId" class="img-gen-text-input" placeholder="e.g. my-video-2024" />
+                                    <button type="button" id="btnGenVideoId" class="btn-gen-id" title="Tạo ID ngẫu nhiên">🔀 Tạo ID</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Prompts -->
+                        <div class="section-card">
+                            <div class="section-card-header violet">
+                                <span class="section-card-header-icon">💬</span>
+                                <span class="section-card-header-title">Danh Sách Prompts</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="img-gen-prompts-header">
+                                    <p class="upload-hint" style="margin: 0;">Mỗi dòng = 1 scene. Có thể import từ Tab Trợ Lý AI.</p>
+                                    <button type="button" id="btnImportPrompts" class="btn-import-prompts">⟵ Lấy từ Tab AI</button>
+                                </div>
+                                <textarea id="imgGenPrompts" class="custom-textarea img-gen-textarea"
+                                    placeholder="Scene 1: A detailed fantasy landscape with mountains and fog...&#10;Scene 2: A warrior standing on a cliff at sunset...&#10;Scene 3: ..."
+                                    rows="6" style="margin-top: 8px;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div style="display: flex; gap: 12px;">
+                            <button id="btnStartImageGen" type="button" class="btn-submit" style="flex: 1;">
+                                ✨ Bắt Đầu Tạo Ảnh
+                            </button>
+                            <button id="btnDownloadAllImages" type="button" class="btn-submit"
+                                style="flex: 0 0 auto; background: linear-gradient(135deg, #7c3aed, #6d28d9); display: none;">
+                                📦 Tải Tất Cả (ZIP)
+                            </button>
+                        </div>
+
+                        <!-- Progress -->
+                        <div id="imgGenProgress" style="display: none; margin-top: 20px;">
+                            <div class="img-gen-progress-header">
+                                <span id="imgGenProgressLabel">Đang khởi động...</span>
+                                <span id="imgGenProgressCount">0 / 0</span>
+                            </div>
+                            <div class="img-gen-progress-bar-wrap">
+                                <div class="img-gen-progress-bar" id="imgGenProgressBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Image Grid -->
+                        <div id="imgGenGrid" class="image-gen-grid" style="margin-top: 20px;"></div>
+
+                        <!-- Error -->
+                        <div id="imgGenError" class="img-gen-error" style="display: none;"></div>
+
+                    </div>
+                </div>
+
+                <!-- ══════════ PROGRESS VIEW ══════════ -->
+                <div id="progress" class="progress-section" style="display: none;">
+                    <h2>⏳ Đang Tạo Video...</h2>
+                    <p class="progress-subtitle">Vui lòng chờ, chúng tôi đang lắp ráp câu chuyện của bạn...</p>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill"></div>
+                        </div>
+                    </div>
+                    <p id="progressText">Khởi động...</p>
+                    <ul id="progressSteps" class="progress-steps">
+                        <li id="step-rembg" class="step">
+                            <div class="step-status"><span class="step-bullet"></span></div>
+                            <div class="step-content">
+                                <span class="step-title">Tách Nền & Ghép Ảnh</span>
+                                <span class="step-desc">Trích xuất foreground và ghép lên ảnh nền</span>
+                            </div>
+                        </li>
+                        <li id="step-whisper" class="step">
+                            <div class="step-status"><span class="step-bullet"></span></div>
+                            <div class="step-content">
+                                <span class="step-title">Trích Xuất Timestamp Audio</span>
+                                <span class="step-desc">Phân tích timeline giọng nói bằng Whisper AI</span>
+                            </div>
+                        </li>
+                        <li id="step-parse" class="step">
+                            <div class="step-status"><span class="step-bullet"></span></div>
+                            <div class="step-content">
+                                <span class="step-title">Phân Tích Kịch Bản & Cảnh</span>
+                                <span class="step-desc">Đọc cấu trúc file text và timestamps</span>
+                            </div>
+                        </li>
+                        <li id="step-timeline" class="step">
+                            <div class="step-status"><span class="step-bullet"></span></div>
+                            <div class="step-content">
+                                <span class="step-title">Tạo Timeline Đồng Bộ</span>
+                                <span class="step-desc">Khớp kịch bản với thời gian audio</span>
+                            </div>
+                        </li>
+                        <li id="step-subtitle" class="step">
+                            <div class="step-status"><span class="step-bullet"></span></div>
+                            <div class="step-content">
+                                <span class="step-title">Tạo Phụ Đề</span>
+                                <span class="step-desc">Biên dịch phụ đề sang định dạng SRT</span>
+                            </div>
+                        </li>
+                        <li id="step-ffmpeg" class="step">
+                            <div class="step-status"><span class="step-bullet"></span></div>
+                            <div class="step-content">
+                                <span class="step-title">Render Video với FFmpeg</span>
+                                <span class="step-desc">Ghép scene, merge audio và ghi phụ đề</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ══════════ SUCCESS VIEW ══════════ -->
+                <div id="success" class="success-section" style="display: none;">
+                    <h2>🎉 Video Đã Tạo Thành Công!</h2>
+                    <p>Xem trước video của bạn trước khi tải xuống:</p>
+                    <div class="video-preview-container">
+                        <video id="videoPreviewPlayer" controls>
+                            Trình duyệt của bạn không hỗ trợ thẻ video HTML5.
+                        </video>
+                    </div>
+                    <div class="success-actions">
+                        <a id="downloadLink" href="#" class="btn-download">⬇️ Tải Video</a>
+                        <button onclick="location.reload()" class="btn-secondary-action">🔄 Tạo Video Mới</button>
+                    </div>
+
+                    <!-- YouTube Upload -->
+                    <div id="youtubeUploadSection" class="yt-upload-section">
+                        <h3>▶️ Upload lên YouTube</h3>
+                        <div id="youtubeAuthSection">
+                            <p class="upload-hint" style="margin-bottom: 12px;">Kết nối tài khoản YouTube để đăng video trực tiếp.</p>
+                            <button id="btnYoutubeConnect" type="button" class="btn-secondary-action"
+                                style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #fca5a5;">
+                                🔗 Kết nối YouTube
+                            </button>
+                        </div>
+
+                        <div id="youtubeFormSection" style="display: none;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; margin-top: 4px;">
+                                <p style="color: var(--success); font-size: 0.88em; font-weight: 600;">✅ Đã kết nối YouTube</p>
+                                <button id="btnYoutubeLogout" type="button" class="btn-secondary-action"
+                                    style="padding: 4px 10px; font-size: 0.78em; border-color: var(--border-subtle);">Đăng xuất</button>
+                            </div>
+                            <label class="yt-form-label">Tiêu đề</label>
+                            <input type="text" id="ytTitle" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 10px;">
+
+                            <label class="yt-form-label">Mô tả</label>
+                            <textarea id="ytDescription" rows="4" class="custom-textarea" style="margin-top: 4px; margin-bottom: 10px;"></textarea>
+
+                            <label class="yt-form-label">Tags (cách nhau bằng dấu phẩy)</label>
+                            <input type="text" id="ytTags" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 10px;">
+
+                            <label class="yt-form-label">Trạng thái</label>
+                            <select id="ytPrivacy" style="margin-top: 4px; margin-bottom: 16px;">
+                                <option value="private">🔒 Riêng tư (Private)</option>
+                                <option value="unlisted">🔗 Không công khai (Unlisted)</option>
+                                <option value="public">🌐 Công khai (Public)</option>
+                            </select>
+
+                            <button id="btnYoutubeUpload" type="button" class="btn-submit btn-submit-large"
+                                style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 22px rgba(239,68,68,0.35);">
+                                ▶️ Tải lên YouTube
+                            </button>
+
+                            <div id="ytUploadProgress" style="display: none; margin-top: 16px; text-align: center;">
+                                <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px;"></div>
+                                <p id="ytUploadStatus" style="font-size: 0.9em; color: var(--text-secondary);">Đang tải lên...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══════════ ERROR VIEW ══════════ -->
+                <div id="error" class="error-section" style="display: none;">
+                    <h2>❌ Có Lỗi Xảy Ra</h2>
+                    <p id="errorMessage"></p>
+                    <button onclick="location.reload()" class="btn-retry">🔄 Thử Lại</button>
+                </div>
+
+            </div><!-- /.content-wrapper -->
         </main>
-    </div>
+    </div><!-- /.app-layout -->
 
+    <script>
+    // Provider radio card selection
+    function selectProvider(value) {
+        document.querySelectorAll('.provider-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.provider === value);
+        });
+        document.getElementById('ttsProvider').value = value;
+    }
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
