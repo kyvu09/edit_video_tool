@@ -142,8 +142,17 @@ async function processAudio(audioPath, sceneTexts = []) {
       end:   Math.round(s.end   * 100) / 100
     }));
 
-    // Word-level timestamps removed
-    segments._wordTimestamps = null;
+    // Parse word-level timestamps from OpenAI Whisper API response
+    const rawWords = response.data.words;
+    if (Array.isArray(rawWords) && rawWords.length > 0) {
+      segments._wordTimestamps = rawWords.map(w => ({
+        word:  w.word ? w.word.trim() : '',
+        start: Math.round(w.start * 100) / 100,
+        end:   Math.round(w.end   * 100) / 100
+      })).filter(w => w.word.length > 0);
+    } else {
+      segments._wordTimestamps = null;
+    }
 
     return segments;
 

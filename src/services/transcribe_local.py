@@ -24,7 +24,8 @@ def transcribe(audio_path):
         model = WhisperModel(model_size, device="cpu", compute_type="float32")
 
         # word_timestamps=True enables per-word start/end times for karaoke highlighting
-        segments, info = model.transcribe(audio_path, beam_size=5, word_timestamps=True)
+        # language="vi" forces Vietnamese recognition to prevent hallucination to other languages
+        segments, info = model.transcribe(audio_path, beam_size=5, word_timestamps=True, language="vi")
 
         result_segments = []
         all_words = []  # flat list for karaoke subtitle generator

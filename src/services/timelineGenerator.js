@@ -139,7 +139,7 @@ function generateTimeline(scenes, timestamps, imageFiles) {
   }
 
   // Second pass B: Enforce minimum duration by stealing time from adjacent scenes
-  const MIN_SCENE_DUR = 2;
+  const MIN_SCENE_DUR = 0.5;
   for (let i = 0; i < timeline.length; i++) {
     let dur = timeline[i].end - timeline[i].start;
     if (dur < MIN_SCENE_DUR) {

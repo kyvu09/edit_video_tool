@@ -1908,3 +1908,97 @@ select option {
         text-align: center;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   TOGGLE ROW (e.g. Karaoke Effect)
+═══════════════════════════════════════════════════════════ */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+}
+
+.toggle-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-default);
+}
+
+.toggle-row-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toggle-row-icon {
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
+
+.toggle-row-title {
+    display: block;
+    font-size: 0.88em;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.toggle-row-desc {
+    display: block;
+    font-size: 0.75em;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Toggle switch pill */
+.toggle-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 24px;
+}
+
+.toggle-switch input[type="checkbox"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 100px;
+    transition: background 0.25s ease;
+    cursor: pointer;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    left: 3px;
+    top: 3px;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}

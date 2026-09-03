@@ -26,7 +26,7 @@ const app = express();
 // In-memory store for session progress
 const sessions = {};
 
-async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9', bgmVolume = 30, videoSpeed = 1.0) {
+async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9', bgmVolume = 30, videoSpeed = 1.0, enableKaraokeEffect = true) {
   const timeout = setTimeout(() => {
     console.error(`[Session ${sessionId}] ⏱️ Processing timeout (>12 hours)`);
     sessions[sessionId].status = 'failed';
@@ -158,7 +158,7 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].statusMessage = 'Creating subtitle track...';
     
     const assPath = path.join(sessionDir, 'subtitle.ass');
-    subtitleGenerator.generateASS(timeline, assPath, wordTimestamps, aspectRatio);
+    subtitleGenerator.generateASS(timeline, assPath, wordTimestamps, aspectRatio, enableKaraokeEffect);
     sessions[sessionId].progress = 55;
 
     // Step 5: Render video
@@ -234,6 +234,7 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     const aspectRatio = req.body.aspectRatio || '16:9';
     const bgmVolume = req.body.bgmVolume !== undefined ? parseFloat(req.body.bgmVolume) : 30;
     const videoSpeed = req.body.videoSpeed !== undefined ? parseFloat(req.body.videoSpeed) : 1.0;
+    const enableKaraokeEffect = req.body.enableKaraokeEffect !== '0'; // default true
 
     if (audioFiles.length === 0 || scriptFiles.length === 0 || imageFiles.length === 0) {
       return res.status(400).json({ error: 'Missing required files: audio, script, or images' });
@@ -261,7 +262,7 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     };
 
     // Start background processing
-    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio, bgmVolume, videoSpeed)
+    processVideoBackground(sessionId, files, sessionDir, backgroundMode, aspectRatio, bgmVolume, videoSpeed, enableKaraokeEffect)
       .catch((err) => {
         console.error(`[Session ${sessionId}] Unhandled error in background processing:`, err);
         sessions[sessionId].status = 'failed';

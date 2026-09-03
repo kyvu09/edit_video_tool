@@ -50,7 +50,7 @@ async function pastePromptToFlow(promptText, isFirst = true, isLast = true) {
         robot.keyTap('enter');
         
         // Chờ 1.5 giây cho Google Flow nhận lệnh trước khi Alt+Tab về
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 1000));
 
         if (!isLast) {
             // Từ Google Flow, Alt+Tab về lại Localhost để lấy prompt tiếp theo

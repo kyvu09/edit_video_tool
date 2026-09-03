@@ -469,7 +469,7 @@ function getOrCreateWords(item) {
 }
 
 // ── generateASS ───────────────────────────────────────────────────────────────
-function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = '16:9') {
+function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = '16:9', enableKaraokeEffect = true) {
   let playResX = 1920;
   let playResY = 1080;
   let fontSize = 48;
@@ -511,146 +511,248 @@ Style: Default,Arial,${fontSize},&H00FFFFFF,&H00888888,&H00000000,&HC8000000,${b
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  const chunked = chunkTimeline(timeline, wordTimestamps, maxChars);
+// ── Global Alignment: align FULL script against ALL word timestamps at once ───
+// This is the most accurate approach: timing comes 100% from Whisper,
+// no scene-boundary filtering that could mismatch words to wrong time windows.
+function buildEventsFromGlobalAlignment(allScriptText, wordTimestamps, maxChars, maxCharsPerLine, zoomScale, bold, enableKaraokeEffect) {
+  if (!wordTimestamps || wordTimestamps.length === 0) return null;
+
+  const audioStart = wordTimestamps[0].start;
+  const audioEnd   = wordTimestamps[wordTimestamps.length - 1].end;
+
+  // 1. Align the full script text to all word timestamps globally
+  const alignedWords = getAlignedWords(allScriptText, wordTimestamps, audioStart, audioEnd);
+  if (alignedWords.length === 0) return null;
+
+  // 2. Split aligned words into display chunks by character count
+  const chunks = [];
+  let currentChunk = [];
+  let currentLength = 0;
+
+  for (const wordObj of alignedWords) {
+    const space = currentChunk.length > 0 ? 1 : 0;
+    if (currentLength + space + wordObj.word.length > maxChars && currentChunk.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = [wordObj];
+      currentLength = wordObj.word.length;
+    } else {
+      currentChunk.push(wordObj);
+      currentLength += space + wordObj.word.length;
+    }
+  }
+  if (currentChunk.length > 0) chunks.push(currentChunk);
 
   let events = '';
 
-  chunked.forEach((item) => {
-    const words = getOrCreateWords(item);
+  chunks.forEach((chunk) => {
+    const chunkStart = chunk[0].start;
+    const chunkEnd   = chunk[chunk.length - 1].end;
+    const chunkDur   = Math.max(0.05, chunkEnd - chunkStart);
 
-    if (words.length > 0) {
-      // 1. Generate a timeline of contiguous segments covering [item.start, item.end]
-      const segments = [];
-      let currentTime = item.start;
+    // ── Build line layout for consistent display within this chunk ────────────
+    const lines = [[]];
+    let lineLen = 0;
+    chunk.forEach((w, idx) => {
+      const space = lines[lines.length - 1].length > 0 ? 1 : 0;
+      if (lineLen + space + w.word.length > maxCharsPerLine && lines[lines.length - 1].length > 0) {
+        lines.push([{ word: w.word, index: idx }]);
+        lineLen = w.word.length;
+      } else {
+        lines[lines.length - 1].push({ word: w.word, index: idx });
+        lineLen += space + w.word.length;
+      }
+    });
 
-      words.forEach((wordObj, idx) => {
-        // If there is a silence/gap of at least 50ms before the word
-        if (wordObj.start > currentTime) {
-          const gapDuration = wordObj.start - currentTime;
-          if (gapDuration >= 0.05) {
-            // Silence segment (highlightIndex = -1)
-            segments.push({
-              start: currentTime,
-              end: wordObj.start,
-              highlightIndex: -1
-            });
-            // Word segment (highlightIndex = idx)
-            segments.push({
-              start: wordObj.start,
-              end: wordObj.end,
-              highlightIndex: idx
-            });
+    // Helper: render the chunk text with one word optionally highlighted,
+    // and a zoom-out animation anchored to [chunkStart, chunkEnd].
+    const renderChunkText = (eventStart, highlightIdx) => {
+      const progress     = chunkDur > 0 ? (eventStart - chunkStart) / chunkDur : 0;
+      const currentScale = zoomScale - (zoomScale - 100) * progress;
+      const startOff     = Math.round((chunkStart - eventStart) * 1000);
+      const endOff       = Math.round((chunkEnd   - eventStart) * 1000);
+      const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOff},${endOff},\\fscx100\\fscy100)}`;
+
+      const formattedLines = lines.map(line =>
+        line.map(wItem => {
+          const esc = escapeASS(wItem.word);
+          if (enableKaraokeEffect && wItem.index === highlightIdx) {
+            return `{\\c&H0000D7FF&\\b1}${esc}{\\c&H00FFFFFF&\\b${bold}}`;
+          }
+          return esc;
+        }).join(' ')
+      );
+      return anim + formattedLines.join('\\N');
+    };
+
+    if (!enableKaraokeEffect) {
+      // Static event for whole chunk — no word coloring
+      const start  = formatASS(chunkStart);
+      const end    = formatASS(chunkEnd);
+      const durMs  = Math.max(1, Math.round(chunkDur * 1000));
+      const anim   = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
+      const textStr = anim + lines.map(line => line.map(wItem => escapeASS(wItem.word)).join(' ')).join('\\N');
+      events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${textStr}\n`;
+      return;
+    }
+
+    // Karaoke: emit one ASS event per word (+ gap segments between words)
+    let currentTime = chunkStart;
+
+    chunk.forEach((wordObj, idx) => {
+      // Gap before this word
+      if (wordObj.start > currentTime + 0.04) {
+        const s = formatASS(currentTime);
+        const e = formatASS(wordObj.start);
+        events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderChunkText(currentTime, -1)}\n`;
+        currentTime = wordObj.start;
+      }
+
+      // Word highlight segment
+      const wStart = Math.max(currentTime, wordObj.start);
+      const wEnd   = Math.max(wStart + 0.04, wordObj.end);
+      const s      = formatASS(wStart);
+      const e      = formatASS(wEnd);
+      events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderChunkText(wStart, idx)}\n`;
+      currentTime = wEnd;
+    });
+
+    // Trailing silence at end of chunk
+    if (chunkEnd > currentTime + 0.04) {
+      const s = formatASS(currentTime);
+      const e = formatASS(chunkEnd);
+      events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderChunkText(currentTime, -1)}\n`;
+    }
+  });
+
+  return events;
+}
+
+  // ── Dispatch: use global alignment when word timestamps are available ────────
+  // Global alignment is far more accurate because timing comes 100% from Whisper,
+  // completely independent of scene-boundary matching errors.
+  let events = '';
+
+  if (wordTimestamps && wordTimestamps.length > 0) {
+    const allScriptText = timeline.map(item => String(item.text).trim()).join(' ');
+    const globalEvents = buildEventsFromGlobalAlignment(
+      allScriptText, wordTimestamps, maxChars, maxCharsPerLine, zoomScale, bold, enableKaraokeEffect
+    );
+    if (globalEvents !== null) {
+      console.log('[SubtitleGen] ✅ Using global word alignment for accurate subtitle sync.');
+      events = globalEvents;
+    } else {
+      console.warn('[SubtitleGen] ⚠️ Global alignment returned null, falling back to per-scene mode.');
+    }
+  }
+
+  // Fallback: per-scene chunking (used when no word timestamps available)
+  if (!events) {
+    console.log('[SubtitleGen] Using per-scene fallback (no word timestamps).');
+    const chunked = chunkTimeline(timeline, wordTimestamps, maxChars);
+
+    chunked.forEach((item) => {
+      const words = getOrCreateWords(item);
+
+      if (!enableKaraokeEffect) {
+        const start = formatASS(item.start);
+        const end = formatASS(item.end);
+        const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
+        const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
+        const text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
+        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
+        return;
+      }
+
+      if (words.length > 0) {
+        const segments = [];
+        let currentTime = item.start;
+
+        words.forEach((wordObj, idx) => {
+          if (wordObj.start > currentTime) {
+            const gapDuration = wordObj.start - currentTime;
+            if (gapDuration >= 0.05) {
+              segments.push({ start: currentTime, end: wordObj.start, highlightIndex: -1 });
+              segments.push({ start: wordObj.start, end: wordObj.end, highlightIndex: idx });
+            } else {
+              segments.push({ start: currentTime, end: wordObj.end, highlightIndex: idx });
+            }
           } else {
-            // Short gap, merge it into the word segment
-            segments.push({
-              start: currentTime,
-              end: wordObj.end,
-              highlightIndex: idx
-            });
+            const start = Math.max(currentTime, wordObj.start);
+            const end = Math.max(start, wordObj.end);
+            if (end > start) segments.push({ start, end, highlightIndex: idx });
           }
-        } else {
-          // Overlapping/adjacent word, enforce sequential start time
-          const start = Math.max(currentTime, wordObj.start);
-          const end = Math.max(start, wordObj.end);
-          if (end > start) {
-            segments.push({
-              start,
-              end,
-              highlightIndex: idx
-            });
-          }
-        }
-        if (segments.length > 0) {
-          currentTime = segments[segments.length - 1].end;
-        } else {
-          currentTime = wordObj.end;
-        }
-      });
-
-      // Gap after the last word
-      if (item.end > currentTime) {
-        const gapDuration = item.end - currentTime;
-        if (gapDuration >= 0.05) {
-          segments.push({
-            start: currentTime,
-            end: item.end,
-            highlightIndex: -1
-          });
-        } else {
-          // Extend last segment to item.end
           if (segments.length > 0) {
+            currentTime = segments[segments.length - 1].end;
+          } else {
+            currentTime = wordObj.end;
+          }
+        });
+
+        if (item.end > currentTime) {
+          const gapDuration = item.end - currentTime;
+          if (gapDuration >= 0.05) {
+            segments.push({ start: currentTime, end: item.end, highlightIndex: -1 });
+          } else if (segments.length > 0) {
             segments[segments.length - 1].end = item.end;
           }
         }
-      }
 
-      // 2. Generate a dialogue event for each segment
-      segments.forEach((seg) => {
-        const eventStart = seg.start;
-        const eventEnd = seg.end;
-        // Ensure positive duration and prevent overlap issues
-        const duration = Math.max(0.05, eventEnd - eventStart);
-        const start = formatASS(eventStart);
-        const end = formatASS(eventStart + duration);
+        segments.forEach((seg) => {
+          const eventStart = seg.start;
+          const duration = Math.max(0.05, seg.end - eventStart);
+          const start = formatASS(eventStart);
+          const end = formatASS(eventStart + duration);
 
-        const chunkDur = item.end - item.start;
-        const progress = chunkDur > 0 ? (eventStart - item.start) / chunkDur : 0;
-        const currentScale = zoomScale - (zoomScale - 100) * progress;
+          const chunkDur = item.end - item.start;
+          const progress = chunkDur > 0 ? (eventStart - item.start) / chunkDur : 0;
+          const currentScale = zoomScale - (zoomScale - 100) * progress;
+          const startOffset = Math.round((item.start - eventStart) * 1000);
+          const endOffset = Math.round((item.end - eventStart) * 1000);
+          const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOffset},${endOffset},\\fscx100\\fscy100)}`;
 
-        const startOffset = Math.round((item.start - eventStart) * 1000);
-        const endOffset = Math.round((item.end - eventStart) * 1000);
-
-        const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOffset},${endOffset},\\fscx100\\fscy100)}`;
-
-        // Consistent word-wrap per chunk
-        const lines = [];
-        let currentLine = [];
-        let currentLength = 0;
-
-        words.forEach((w, idx) => {
-          const spaceNeeded = currentLine.length > 0 ? 1 : 0;
-          if (currentLength + spaceNeeded + w.word.length > maxCharsPerLine) {
-            if (currentLine.length > 0) {
-              lines.push(currentLine);
-              currentLine = [{ word: w.word, index: idx }];
-              currentLength = w.word.length;
+          const lines = [];
+          let currentLine = [];
+          let currentLength = 0;
+          words.forEach((w, idx) => {
+            const spaceNeeded = currentLine.length > 0 ? 1 : 0;
+            if (currentLength + spaceNeeded + w.word.length > maxCharsPerLine) {
+              if (currentLine.length > 0) {
+                lines.push(currentLine);
+                currentLine = [{ word: w.word, index: idx }];
+                currentLength = w.word.length;
+              } else {
+                lines.push([{ word: w.word, index: idx }]);
+                currentLine = [];
+                currentLength = 0;
+              }
             } else {
-              lines.push([{ word: w.word, index: idx }]);
-              currentLine = [];
-              currentLength = 0;
+              currentLine.push({ word: w.word, index: idx });
+              currentLength += spaceNeeded + w.word.length;
             }
-          } else {
-            currentLine.push({ word: w.word, index: idx });
-            currentLength += spaceNeeded + w.word.length;
-          }
-        });
-        if (currentLine.length > 0) {
-          lines.push(currentLine);
-        }
+          });
+          if (currentLine.length > 0) lines.push(currentLine);
 
-        const formattedLines = lines.map(line => {
-          return line.map(wItem => {
-            const escWord = escapeASS(wItem.word);
-            if (wItem.index === seg.highlightIndex) {
-              return `{\\c&H0000D7FF&\\b1}${escWord}{\\c&H00FFFFFF&\\b${bold}}`;
-            }
-            return escWord;
-          }).join(' ');
-        });
+          const formattedLines = lines.map(line =>
+            line.map(wItem => {
+              const escWord = escapeASS(wItem.word);
+              if (enableKaraokeEffect && wItem.index === seg.highlightIndex) {
+                return `{\\c&H0000D7FF&\\b1}${escWord}{\\c&H00FFFFFF&\\b${bold}}`;
+              }
+              return escWord;
+            }).join(' ')
+          );
 
-        const text = `${anim}${formattedLines.join('\\N')}`;
-        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
-      });
-    } else {
-      // Fallback in case of empty text/words
-      const start = formatASS(item.start);
-      const end = formatASS(item.end);
-      const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
-      const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
-      const text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
-      events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
-    }
-  });
+          events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${anim}${formattedLines.join('\\N')}\n`;
+        });
+      } else {
+        const start = formatASS(item.start);
+        const end = formatASS(item.end);
+        const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
+        const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
+        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}\n`;
+      }
+    });
+  }
 
   fs.writeFileSync(outputPath, header + events, { encoding: 'utf8' });
   return outputPath;

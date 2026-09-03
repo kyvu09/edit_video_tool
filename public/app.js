@@ -198,6 +198,11 @@ form.addEventListener('submit', async (e) => {
         const bgmVolume = document.getElementById('bgmVolume').value;
         formData.append('bgmVolume', bgmVolume);
     }
+
+    // Karaoke effect toggle
+    const karaokeCheckbox = document.getElementById('enableKaraokeEffect');
+    const enableKaraokeEffect = karaokeCheckbox ? karaokeCheckbox.checked : true;
+    formData.append('enableKaraokeEffect', enableKaraokeEffect ? '1' : '0');
     
     selectedImages.forEach((imgObj) => {
         formData.append('images', imgObj.file);
