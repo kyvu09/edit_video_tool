@@ -427,29 +427,58 @@ app.post('/api/flow-ai', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+const localTtsService = require('./src/services/localTtsService');
 const viettelTtsService = require('./src/services/viettelTtsService');
-const elevenlabsTtsService = require('./src/services/elevenlabsTtsService');
 
-app.post('/api/tts', async (req, res) => {
+const ttsUpload = multer({
+  dest: path.join(__dirname, 'uploads'),
+  limits: { fileSize: 25 * 1024 * 1024 }
+});
+
+app.post('/api/tts', (req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  if (contentType.includes('multipart/form-data')) {
+    ttsUpload.single('refAudioFile')(req, res, next);
+  } else {
+    next();
+  }
+}, async (req, res) => {
   try {
-    const { text, provider } = req.body;
+    const { text, provider, voice, speed } = req.body;
     if (!text) return res.status(400).json({ error: 'Thiếu text kịch bản' });
     
+    const refAudio = req.file ? req.file.path : (req.body.refAudio || null);
+
     let audioBuffer;
-    if (provider === 'elevenlabs') {
-      audioBuffer = await elevenlabsTtsService.generateSpeech(text);
-    } else {
-      // Default is Viettel AI
+    let contentType = 'audio/wav';
+    let filename = 'audio.wav';
+
+    if (provider === 'viettel') {
       audioBuffer = await viettelTtsService.generateSpeech(text);
+      contentType = 'audio/mpeg';
+      filename = 'audio.mp3';
+    } else if (provider === 'kokoro') {
+      // Kokoro TTS (English / Multilingual offline)
+      audioBuffer = await localTtsService.generateSpeech(text, { engine: 'kokoro', voice, speed });
+    } else {
+      // Default: Local TTS (VieNeu - Tiếng Việt 48kHz, Offline 100%, with optional refAudio clone)
+      audioBuffer = await localTtsService.generateSpeech(text, { engine: 'vieneu', voice, speed, refAudio });
+    }
+
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlink(req.file.path, () => {});
     }
     
     res.set({
-      'Content-Type': 'audio/mpeg',
-      'Content-Disposition': 'attachment; filename="audio.mp3"',
+      'Content-Type': contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
       'Content-Length': audioBuffer.length
     });
     res.send(audioBuffer);
   } catch (err) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlink(req.file.path, () => {});
+    }
     console.error('TTS Error:', err);
     res.status(500).json({ error: err.message });
   }

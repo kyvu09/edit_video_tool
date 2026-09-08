@@ -1108,12 +1108,30 @@ function initAIAssistant() {
             btnGenerateTts.innerHTML = '⏳ Đang tạo Audio...';
             
             try {
-                const provider = document.getElementById('ttsProvider') ? document.getElementById('ttsProvider').value : 'viettel';
-                const res = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: scriptText, provider: provider })
-                });
+                const provider = document.getElementById('ttsProvider') ? document.getElementById('ttsProvider').value : 'local';
+                const voiceSelect = document.getElementById('ttsVoiceSelect');
+                const voice = voiceSelect ? voiceSelect.value : 'Minh Quân';
+                const refAudioInput = document.getElementById('ttsRefAudioInput');
+                const refAudioFile = (refAudioInput && refAudioInput.files && refAudioInput.files[0]) ? refAudioInput.files[0] : null;
+
+                let res;
+                if (refAudioFile && provider === 'local') {
+                    const formData = new FormData();
+                    formData.append('text', scriptText);
+                    formData.append('provider', provider);
+                    formData.append('voice', voice);
+                    formData.append('refAudioFile', refAudioFile);
+                    res = await fetch('/api/tts', {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else {
+                    res = await fetch('/api/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: scriptText, provider: provider, voice: voice })
+                    });
+                }
                 
                 if (!res.ok) {
                     let err;

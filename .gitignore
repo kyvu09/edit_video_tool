@@ -29,3 +29,5 @@ scratch/
 # Runtime generated assets (scene images, cache) — not committed
 assets/
 cache/
+
+models/

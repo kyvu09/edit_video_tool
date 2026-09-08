@@ -267,29 +267,104 @@
                             <div class="section-card-body">
                                 <!-- Hidden select for compatibility -->
                                 <select id="ttsProvider" style="display: none;">
+                                    <option value="local" selected>Local TTS (VieNeu)</option>
                                     <option value="viettel">Viettel AI</option>
-                                    <option value="elevenlabs">ElevenLabs</option>
+                                    <option value="kokoro">Kokoro TTS</option>
                                 </select>
 
                                 <div class="provider-cards">
-                                    <div class="provider-card selected" data-provider="viettel" onclick="selectProvider('viettel')">
+                                    <div class="provider-card selected" data-provider="local" onclick="selectProvider('local')">
+                                        <div class="provider-card-radio"></div>
+                                        <div class="provider-card-icon">💻</div>
+                                        <div class="provider-card-info">
+                                            <div class="provider-card-name">Local TTS (VieNeu)</div>
+                                            <div class="provider-card-desc">Giọng Minh Quân — Chuẩn Tiếng Việt 48kHz (Offline 100%)</div>
+                                        </div>
+                                        <span class="provider-card-badge">Khuyên dùng</span>
+                                    </div>
+                                    <div class="provider-card" data-provider="viettel" onclick="selectProvider('viettel')">
                                         <div class="provider-card-radio"></div>
                                         <div class="provider-card-icon">🇻🇳</div>
                                         <div class="provider-card-info">
                                             <div class="provider-card-name">Viettel AI</div>
                                             <div class="provider-card-desc">Giọng Quỳnh Anh — Tiếng Việt tự nhiên</div>
                                         </div>
-                                        <span class="provider-card-badge">Khuyên dùng</span>
+                                        <span class="provider-card-badge">Dự phòng</span>
                                     </div>
-                                    <div class="provider-card" data-provider="elevenlabs" onclick="selectProvider('elevenlabs')">
+                                    <div class="provider-card" data-provider="kokoro" onclick="selectProvider('kokoro')">
                                         <div class="provider-card-radio"></div>
-                                        <div class="provider-card-icon">⚡</div>
+                                        <div class="provider-card-icon">🌐</div>
                                         <div class="provider-card-info">
-                                            <div class="provider-card-name">ElevenLabs</div>
-                                            <div class="provider-card-desc">Chất lượng cao — Studio-grade voice</div>
+                                            <div class="provider-card-name">Kokoro TTS</div>
+                                            <div class="provider-card-desc">Chuyên Tiếng Anh & Đa ngữ — Siêu nhanh (Offline 100%)</div>
                                         </div>
-                                        <span class="provider-card-badge amber">Premium</span>
+                                        <span class="provider-card-badge">English / Multi</span>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Voice Selection & Voice Cloning (For VieNeu & Kokoro) -->
+                        <div id="ttsVoiceOptionsContainer" class="section-card">
+                            <div class="section-card-header indigo">
+                                <span class="section-card-header-icon">🎭</span>
+                                <span class="section-card-header-title">Chọn Giọng Hoặc Clone Giọng</span>
+                            </div>
+                            <div class="section-card-body" style="display: flex; flex-direction: column; gap: 14px;">
+                                <!-- Dropdown chọn giọng có sẵn -->
+                                <div id="presetVoiceWrapper">
+                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">
+                                        🎙️ Chọn Giọng Đọc Có Sẵn:
+                                    </label>
+                                    <select id="ttsVoiceSelect" class="custom-select-voice">
+                                        <optgroup label="Miền Bắc">
+                                            <option value="Minh Quân" selected>Minh Quân — Nam · Bắc (Tự nhiên, Mặc định)</option>
+                                            <option value="Minh Đức">Minh Đức — Nam · Bắc (Tin tức / Thời sự)</option>
+                                            <option value="Phạm Tuyên">Phạm Tuyên — Nam · Bắc (Trầm ấm)</option>
+                                            <option value="Mai Anh">Mai Anh — Nữ · Bắc (Tin tức / Review)</option>
+                                            <option value="Quỳnh Anh">Quỳnh Anh — Nữ · Bắc (Đọc truyện / Truyền cảm)</option>
+                                            <option value="Trúc Ly">Trúc Ly — Nữ · Bắc (Tự nhiên)</option>
+                                            <option value="Thanh Bình">Thanh Bình — Nam · Bắc (Kể chuyện)</option>
+                                            <option value="Anh Khôi">Anh Khôi — Nam · Bắc (Kể chuyện)</option>
+                                            <option value="Mạnh Dũng">Mạnh Dũng — Nam · Bắc (Tự nhiên)</option>
+                                        </optgroup>
+                                        <optgroup label="Miền Nam">
+                                            <option value="Thái Sơn">Thái Sơn — Nam · Nam (Kể chuyện / Review)</option>
+                                            <option value="Thùy Dung">Thùy Dung — Nữ · Nam (Tin tức / Thời sự)</option>
+                                            <option value="Mỹ Duyên">Mỹ Duyên — Nữ · Nam (Đọc truyện)</option>
+                                            <option value="Minh Triết">Minh Triết — Nam · Nam (Tin tức)</option>
+                                            <option value="Đức Trí">Đức Trí — Nam · Nam (Đọc truyện)</option>
+                                            <option value="Adam">Adam — Nam · Nam (Tự nhiên)</option>
+                                        </optgroup>
+                                        <optgroup label="Miền Trung">
+                                            <option value="Quang Sơn">Quang Sơn — Nam · Trung (Tự nhiên)</option>
+                                            <option value="Ngọc Trân">Ngọc Trân — Nữ · Trung (Tự nhiên)</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+
+                                <!-- Clone giọng mẫu (3-8s) -->
+                                <div id="voiceCloneWrapper" style="padding-top: 10px; border-top: 1px dashed var(--border-default);">
+                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">
+                                        🧬 Clone Giọng Tức Thì (Tùy chọn):
+                                    </label>
+                                    
+                                    <div id="dropZoneRefAudio" class="ref-audio-dropzone">
+                                        <input type="file" id="ttsRefAudioInput" accept="audio/*" style="display: none;">
+                                        <div id="dropZoneText">
+                                            <span style="font-size: 20px;">🎤</span>
+                                            <span style="font-size: 13px; color: var(--text-primary); font-weight: 500; margin-left: 6px;">
+                                                Kéo thả file âm thanh mẫu (3–8s) hoặc <u>nhấn để tải lên</u>
+                                            </span>
+                                        </div>
+                                        <div id="refAudioSelectedInfo" style="display: none; align-items: center; justify-content: center; gap: 8px; margin-top: 4px;">
+                                            <span style="color: #10b981; font-weight: 600; font-size: 13px;" id="refAudioFileName">sample.wav</span>
+                                            <button id="btnClearRefAudio" type="button" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;">✕ Bỏ chọn</button>
+                                        </div>
+                                    </div>
+                                    <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 5px; display: block;">
+                                        💡 Khi có file mẫu (wav/mp3 từ 3–8s), AI sẽ ưu tiên <b>clone y hệt giọng nói mẫu</b> thay vì dùng giọng dựng sẵn.
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -688,13 +763,126 @@
     </div><!-- /.app-layout -->
 
     <script>
-    // Provider radio card selection
+    const vieneuVoiceOptionsHtml = `
+        <optgroup label="Miền Bắc">
+            <option value="Minh Quân" selected>Minh Quân — Nam · Bắc (Tự nhiên, Mặc định)</option>
+            <option value="Minh Đức">Minh Đức — Nam · Bắc (Tin tức / Thời sự)</option>
+            <option value="Phạm Tuyên">Phạm Tuyên — Nam · Bắc (Trầm ấm)</option>
+            <option value="Mai Anh">Mai Anh — Nữ · Bắc (Tin tức / Review)</option>
+            <option value="Quỳnh Anh">Quỳnh Anh — Nữ · Bắc (Đọc truyện / Truyền cảm)</option>
+            <option value="Trúc Ly">Trúc Ly — Nữ · Bắc (Tự nhiên)</option>
+            <option value="Thanh Bình">Thanh Bình — Nam · Bắc (Kể chuyện)</option>
+            <option value="Anh Khôi">Anh Khôi — Nam · Bắc (Kể chuyện)</option>
+            <option value="Mạnh Dũng">Mạnh Dũng — Nam · Bắc (Tự nhiên)</option>
+        </optgroup>
+        <optgroup label="Miền Nam">
+            <option value="Thái Sơn">Thái Sơn — Nam · Nam (Kể chuyện / Review)</option>
+            <option value="Thùy Dung">Thùy Dung — Nữ · Nam (Tin tức / Thời sự)</option>
+            <option value="Mỹ Duyên">Mỹ Duyên — Nữ · Nam (Đọc truyện)</option>
+            <option value="Minh Triết">Minh Triết — Nam · Nam (Tin tức)</option>
+            <option value="Đức Trí">Đức Trí — Nam · Nam (Đọc truyện)</option>
+            <option value="Adam">Adam — Nam · Nam (Tự nhiên)</option>
+        </optgroup>
+        <optgroup label="Miền Trung">
+            <option value="Quang Sơn">Quang Sơn — Nam · Trung (Tự nhiên)</option>
+            <option value="Ngọc Trân">Ngọc Trân — Nữ · Trung (Tự nhiên)</option>
+        </optgroup>
+    `;
+
+    const kokoroVoiceOptionsHtml = `
+        <optgroup label="Giọng Nữ (Female)">
+            <option value="af_heart" selected>af_heart — Nữ Mỹ (Truyền cảm, Mặc định)</option>
+            <option value="af_bella">af_bella — Nữ Mỹ (Trẻ trung)</option>
+            <option value="af_sarah">af_sarah — Nữ Mỹ (Tự nhiên)</option>
+            <option value="bf_emma">bf_emma — Nữ Anh (British English)</option>
+        </optgroup>
+        <optgroup label="Giọng Nam (Male)">
+            <option value="am_adam">am_adam — Nam Mỹ (Trầm ấm)</option>
+            <option value="am_michael">am_michael — Nam Mỹ (Tin tức)</option>
+            <option value="bm_george">bm_george — Nam Anh (British English)</option>
+        </optgroup>
+    `;
+
     function selectProvider(value) {
         document.querySelectorAll('.provider-card').forEach(card => {
             card.classList.toggle('selected', card.dataset.provider === value);
         });
         document.getElementById('ttsProvider').value = value;
+
+        const voiceContainer = document.getElementById('ttsVoiceOptionsContainer');
+        const voiceSelect = document.getElementById('ttsVoiceSelect');
+        const cloneWrapper = document.getElementById('voiceCloneWrapper');
+
+        if (value === 'local') {
+            voiceContainer.style.display = 'block';
+            voiceSelect.innerHTML = vieneuVoiceOptionsHtml;
+            cloneWrapper.style.display = 'block';
+        } else if (value === 'kokoro') {
+            voiceContainer.style.display = 'block';
+            voiceSelect.innerHTML = kokoroVoiceOptionsHtml;
+            cloneWrapper.style.display = 'none';
+        } else {
+            // Viettel AI
+            voiceContainer.style.display = 'none';
+        }
     }
+
+    // Init Dropzone for Reference Audio Cloning
+    document.addEventListener('DOMContentLoaded', () => {
+        const dropZone = document.getElementById('dropZoneRefAudio');
+        const fileInput = document.getElementById('ttsRefAudioInput');
+        const dropText = document.getElementById('dropZoneText');
+        const selectedInfo = document.getElementById('refAudioSelectedInfo');
+        const fileNameDisplay = document.getElementById('refAudioFileName');
+        const btnClear = document.getElementById('btnClearRefAudio');
+
+        if (dropZone && fileInput) {
+            dropZone.addEventListener('click', (e) => {
+                if (e.target !== btnClear && !btnClear.contains(e.target)) {
+                    fileInput.click();
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files && fileInput.files[0]) {
+                    showSelectedFile(fileInput.files[0]);
+                }
+            });
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    fileInput.files = e.dataTransfer.files;
+                    showSelectedFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            btnClear.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.value = '';
+                selectedInfo.style.display = 'none';
+                dropText.style.display = 'block';
+                dropZone.classList.remove('has-file');
+            });
+
+            function showSelectedFile(file) {
+                fileNameDisplay.textContent = `🎤 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                dropText.style.display = 'none';
+                selectedInfo.style.display = 'flex';
+                dropZone.classList.add('has-file');
+            }
+        }
+    });
     </script>
     <script src="app.js"></script>
 </body>
