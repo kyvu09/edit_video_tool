@@ -1,13 +1,14 @@
 <div align="center">
   <h1>🎬 Edit Video Tool - Trợ Lý AI Sản Xuất & Đăng Tải Video Toàn Diện</h1>
-  <p><i>Quy trình tự động hóa khép kín: Trích xuất nội dung → Viết kịch bản phân cảnh → Tạo giọng đọc AI → Sinh ảnh AI → Tách nền thông minh → Đồng bộ phụ đề Karaoke → Render video điện ảnh → Tự động đăng tải YouTube chuẩn SEO.</i></p>
+  <p><i>Quy trình tự động hóa khép kín: Trích xuất nội dung → Viết kịch bản phân cảnh → Tạo giọng đọc AI (VieNeu 48kHz / Kokoro / Clone giọng) → Sinh ảnh AI → Tách nền thông minh → Đồng bộ phụ đề Karaoke → Render video điện ảnh → Tự động đăng tải YouTube chuẩn SEO.</i></p>
 
   <p>
     <img src="https://img.shields.io/badge/Node.js-16%2B-green.svg" alt="Node.js" />
     <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg" alt="Python" />
+    <img src="https://img.shields.io/badge/Local%20TTS-VieNeu%2048kHz-purple.svg" alt="VieNeu TTS" />
+    <img src="https://img.shields.io/badge/Kokoro%20TTS-English%20Offline-teal.svg" alt="Kokoro TTS" />
     <img src="https://img.shields.io/badge/FFmpeg-Enabled-orange.svg" alt="FFmpeg" />
-    <img src="https://img.shields.io/badge/Gemini%20AI-Integrated-purple.svg" alt="Gemini AI" />
-    <img src="https://img.shields.io/badge/OpenAI%20Whisper-Ready-teal.svg" alt="Whisper" />
+    <img src="https://img.shields.io/badge/Gemini%20AI-Integrated-red.svg" alt="Gemini AI" />
     <img src="https://img.shields.io/badge/License-MIT-brightgreen.svg" alt="License" />
   </p>
 </div>
@@ -16,7 +17,9 @@
 
 ## 📌 Giới Thiệu Tổng Quan
 
-**Edit Video Tool** là giải pháp phần mềm all-in-one mạnh mẽ dành cho content creator, YouTuber, TikToker và các nhà sản xuất nội dung số. Công cụ tích hợp sâu các mô hình trí tuệ nhân tạo hàng đầu hiện nay (**Google Gemini**, **OpenAI Whisper**, **Viettel AI**, **ElevenLabs**) cùng bộ xử lý đồ họa **FFmpeg** và các thuật toán thị giác máy tính (**Rembg**, **Color-to-Alpha**) để tự động hóa hoàn toàn quy trình biên tập video từ kịch bản thô cho đến khi video sẵn sàng xuất bản trên YouTube.
+**Edit Video Tool** là giải pháp phần mềm all-in-one mạnh mẽ dành cho content creator, YouTuber, TikToker và các nhà sản xuất nội dung số. Công cụ tích hợp sâu các mô hình trí tuệ nhân tạo hàng đầu hiện nay (**VieNeu-TTS 48kHz**, **Kokoro TTS**, **Google Gemini**, **OpenAI Whisper / Faster-Whisper**) cùng bộ xử lý đồ họa **FFmpeg** và các thuật toán thị giác máy tính (**Rembg**, **Color-to-Alpha**) để tự động hóa hoàn toàn quy trình biên tập video từ kịch bản thô cho đến khi video sẵn sàng xuất bản trên YouTube.
+
+Đặc biệt, hệ thống đã được nâng cấp **Local TTS Engine chạy 100% offline trên máy** (thay thế hoàn toàn ElevenLabs), giúp bạn tạo giọng đọc không giới hạn số lượng và **tiết kiệm 100% chi phí API**.
 
 ---
 
@@ -32,12 +35,23 @@
 ### 2. ⚡ Tự Động Hóa Google Flow (Flow Automation)
 - **Tích hợp Google Flow Bot**: Tự động mở Google Flow (`labs.google/fx/vi/tools/flow/`), tự khởi tạo dự án mới và tự động paste prompt qua clipboard và mô phỏng phím bấm (`robotjs`), tiết kiệm thời gian vẽ ảnh hàng loạt.
 
-### 3. 🎙️ Tạo Giọng Đọc AI Đa Nền Tảng (Text-to-Speech - TTS)
-- **Chuyển văn bản thành giọng nói tức thì**: Lấy trực tiếp kịch bản thoại từ Trợ lý AI chỉ với 1 click.
-- **Đa dạng nhà cung cấp (Providers)**:
-  - 🇻🇳 **Viettel AI**: Giọng đọc Quỳnh Anh chuẩn tiếng Việt, truyền cảm, ngữ điệu tự nhiên.
-  - ⚡ **ElevenLabs**: Giọng đọc studio cao cấp đạt chuẩn quốc tế (`eleven_multilingual_v2`), độ ổn định và chân thực vượt trội.
-- **Trình phát nghe thử (Preview)**: Nghe thử file âm thanh ngay trên giao diện web, hỗ trợ tải về máy (`.mp3`) hoặc gắn trực tiếp vào pipeline Render Video.
+### 3. 🎙️ Hệ Thống Giọng Đọc AI Độc Lập 100% Offline (Local TTS Engine)
+> *Đã gỡ bỏ hoàn toàn ElevenLabs API — Không tốn phí, không giới hạn ký tự, chạy trực tiếp trên CPU bằng ONNX Runtime.*
+
+- 💻 **Local TTS (VieNeu-TTS v3 Turbo - 48kHz Studio Quality)** `[Khuyên dùng số 1]`:
+  - Huấn luyện trên **10.000+ giờ dữ liệu tiếng Việt**, chuẩn dấu (sắc, huyền, hỏi, ngã, nặng) và ngắt nghỉ tự nhiên 100%.
+  - Giọng mặc định: **Minh Quân** (giọng nam miền Bắc đĩnh đạc, ấm áp, cực hợp làm video tin tức/review).
+  - **Menu chọn nhanh 23 giọng đọc 3 miền (Bắc - Trung - Nam)**:
+    - *Miền Bắc*: Minh Quân, Minh Đức, Phạm Tuyên, Mai Anh, Quỳnh Anh, Trúc Ly, Thanh Bình, Anh Khôi, Mạnh Dũng...
+    - *Miền Nam*: Thái Sơn, Thùy Dung, Mỹ Duyên, Minh Triết, Đức Trí, Adam...
+    - *Miền Trung*: Quang Sơn, Ngọc Trân.
+  - **Instant Zero-shot Voice Cloning (3–8 giây)**: Hộp kéo thả file âm thanh mẫu cho phép bạn nhân bản giọng của bất kỳ ai (chính bạn, người nổi tiếng, diễn viên) chỉ từ một đoạn ghi âm ngắn 3–8s.
+- 🌐 **Kokoro TTS (English / Đa Ngữ)**:
+  - Dành riêng cho video tiếng Anh chuẩn quốc tế (chuẩn US/UK như `af_heart`, `af_bella`, `am_adam`, `bf_emma`...).
+  - Siêu nhẹ, tốc độ sinh cực nhanh (~3 giây cho đoạn đọc dài), chạy 100% offline.
+- 🇻🇳 **Viettel AI**:
+  - Giọng đọc Quỳnh Anh giữ làm phương án dự phòng (fallback) qua Cloud API.
+- **Trình phát nghe thử (Preview)**: Nghe thử audio ngay trên web, hỗ trợ tải về máy (`.wav`/`.mp3`) hoặc gắn trực tiếp vào quy trình Render Video với 1 click.
 
 ### 4. 🖼️ Tự Động Sinh Ảnh Phân Cảnh Bằng AI (AI Image Generator)
 - **Tạo ảnh tự động theo Prompt**: Sử dụng **Google Gemini Image API** (hỗ trợ `gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`).
@@ -54,8 +68,8 @@
 
 ### 6. ⏱️ Nhận Diện Âm Thanh & Đồng Bộ Mốc Thời Gian (Whisper AI Timeline)
 - **Cơ chế dự phòng 3 cấp độ (Triple-layer Failover)**:
-  1. 🌐 **OpenAI Whisper API (`whisper-1`)**: Nhận diện âm thanh chuẩn xác, trích xuất mốc thời gian chi tiết đến từng từ (`word_timestamps`).
-  2. 💻 **Faster-Whisper Offline**: Chạy mô hình Whisper cục bộ bằng Python (`faster-whisper`), hoạt động hoàn toàn **offline 100%** trên máy tính mà không cần kết nối internet hay OpenAI API key.
+  1. 💻 **Faster-Whisper Offline**: Chạy mô hình Whisper cục bộ bằng Python (`faster-whisper`), hoạt động hoàn toàn **offline 100%** trên máy tính, trích xuất mốc thời gian chi tiết đến từng từ (`word_timestamps`) mà không tốn tiền API.
+  2. 🌐 **OpenAI Whisper API (`whisper-1`)**: Nhận diện âm thanh qua Cloud API nếu cấu hình key.
   3. ⚙️ **Simulation Fallback**: Thuật toán tính toán mốc thời gian dựa trên độ dài ký tự kịch bản, đảm bảo ứng dụng luôn render thành công trong mọi trường hợp.
 
 ### 7. 📝 Phụ Đề Karaoke Động Đỉnh Cao (Dynamic ASS Subtitles)
@@ -83,26 +97,21 @@
 - **Tùy chỉnh trạng thái đăng tải**: Công khai (Public), Không công khai (Unlisted), hoặc Riêng tư (Private).
 - **Hiển thị tiến trình upload thời gian thực**: Theo dõi dung lượng phần trăm video được đẩy lên YouTube.
 
-### 10. 🖥️ Giao Diện Hiện Đại & Giám Sát Hệ Thống
-- Thiết kế Dark Mode hiện đại phong cách Glassmorphism, chuẩn responsive cho mọi độ phân giải màn hình.
-- Widget kiểm tra tình trạng kết nối API (OpenAI API, Gemini API) trực tiếp trên thanh Sidebar.
-- Trình phát Video HTML5 xem trước kết quả ngay lập tức sau khi render xong.
-
 ---
 
 ## 📐 Kiến Trúc Quy Trình Hoạt Động (Pipeline Architecture)
 
 ```
 [ Nguồn Dữ Liệu ]
-  ├─ Kịch bản thô / Link YouTube ──► [ Gemini AI ] ──► Phân chia Scene, Prompts & SEO Metadata
-  ├─ Kịch bản phân cảnh ──────────► [ Viettel / ElevenLabs TTS ] ──► File Audio Thuyết Minh (.mp3)
+  ├─ Kịch bản thô / Link YouTube ──► [ Gemini AI ] ────────────► Phân chia Scene, Prompts & SEO Metadata
+  ├─ Kịch bản phân cảnh ──────────► [ Local TTS (VieNeu/Kokoro) ] ► Audio 48kHz / Clone giọng (Miễn phí 100%)
   └─ Prompts hình ảnh ───────────► [ Gemini Image / Midjourney ] ─► Danh sách ảnh phân cảnh
 
                                            │
                                            ▼
 [ Xử Lý Thị Giác & Âm Thanh ]
   ├─ Ảnh Scene + Nền ────────────► [ Rembg / White-key ] ────────► Ảnh Composited hoàn chỉnh
-  └─ Audio Thuyết Minh ──────────► [ OpenAI / Faster-Whisper ] ──► Word-level Timestamps
+  └─ Audio Thuyết Minh ──────────► [ Faster-Whisper / OpenAI ] ──► Word-level Timestamps (Karaoke)
 
                                            │
                                            ▼
@@ -121,9 +130,9 @@
 ## 🛠️ Cài Đặt & Cấu Hình
 
 ### 1. Yêu Cầu Môi Trường
-- **Node.js**: Phiên bản 16 trở lên (khuyến nghị 18 hoặc 20 LTS).
-- **Python**: Phiên bản 3.10 trở lên.
-- **FFmpeg & FFprobe**: Đã cài đặt và thêm vào biến môi trường hệ thống (System PATH).
+- **Node.js**: Phiên bản 18 trở lên (khuyến nghị 20 LTS).
+- **Python**: Phiên bản 3.10 - 3.12 (khuyến nghị 3.12).
+- **FFmpeg & FFprobe**: Đã cài đặt và thêm vào biến môi trường hệ thống (`PATH`).
   - *Kiểm tra trên Terminal bằng lệnh*: `ffmpeg -version` và `ffprobe -version`.
 
 ---
@@ -148,15 +157,17 @@ python -m venv .venv
 # Trên Linux/macOS:
 source .venv/bin/activate
 
-# Cài đặt các thư viện xử lý ảnh và âm thanh
-pip install rembg pillow numpy scipy faster-whisper torch
+# Cài đặt các thư viện AI xử lý ảnh, âm thanh và Local TTS
+pip install rembg pillow numpy scipy soundfile onnxruntime
+pip install vieneu kokoro-onnx
+pip install faster-whisper torch
 ```
 
 ---
 
 ### 3. Cấu Hình File Môi Trường (`.env`)
 
-Tạo file `.env` tại thư mục gốc của dự án (tham khảo file `.env.example`):
+Tạo file `.env` tại thư mục gốc của dự án:
 
 ```env
 # ── Server Configuration ──
@@ -169,26 +180,23 @@ PYTHON_PATH=.venv/Scripts/python.exe
 FFMPEG_PATH=ffmpeg
 FFPROBE_PATH=ffprobe
 
-# ── OpenAI API (Dùng cho Whisper Online) ──
-OPENAI_API_KEY=sk-your-openai-api-key-here
-
-# ── Whisper Offline (Dùng khi không có OpenAI key) ──
-# Các mức: tiny | base | small | medium | large-v3 (Khuyên dùng: small hoặc medium)
+# ── Local Whisper Offline (Nhận diện giọng nói & tạo phụ đề Karaoke) ──
+# Các mức mô hình: tiny | base | small | medium | large-v3 (Khuyên dùng: small)
 LOCAL_WHISPER_MODEL=small
+
+# ── OpenAI API (Tùy chọn: chỉ dùng nếu muốn dùng Whisper API Cloud) ──
+OPENAI_API_KEY=
 
 # ── Google Gemini AI (Tạo kịch bản, metadata & sinh ảnh) ──
 GEMINI_API_KEY=your-gemini-api-key-here
 GEMINI_MODEL=gemini-3.5-flash
-# Model sinh ảnh: gemini-2.5-flash-image | gemini-3.1-flash-image | gemini-3.1-flash-lite-image
 GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 
 # ── Text-to-Speech (TTS) Providers ──
-# Viettel AI TTS (Giọng Quỳnh Anh)
+# Viettel AI TTS (Tùy chọn dự phòng)
 VIETTEL_AI_TOKEN=your_viettel_ai_token_here
 
-# ElevenLabs TTS
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-ELEVENLABS_VOICE_ID=your_elevenlabs_voice_id_here
+# Local TTS (VieNeu & Kokoro) hoạt động 100% offline, KHÔNG cần API key hay token!
 
 # ── Google OAuth 2.0 (Dùng cho tính năng Auto-Upload YouTube) ──
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
@@ -201,10 +209,10 @@ GOOGLE_REDIRECT_URI=http://localhost:3000/oauth2callback
 ### 4. Khởi Chạy Ứng Dụng
 
 ```bash
-# Chạy ở môi trường production:
+# Chạy ứng dụng:
 npm start
 
-# Hoặc chạy ở môi trường development (auto reload):
+# Hoặc chế độ development (tự động reload khi sửa code):
 npm run dev
 ```
 
@@ -215,34 +223,39 @@ Mở trình duyệt và truy cập: **[http://localhost:3000](http://localhost:3
 ## 📖 Hướng Dẫn Sử Dụng Chi Tiết Từng Bước
 
 ### Bước 1: Soạn Thảo Kịch Bản (Tab 1)
-1. Dán link video YouTube cần tham khảo (hoặc dán văn bản ý tưởng thô vào ô **Kịch Bản Thô**).
-2. Bấm **✨ Tạo Phân Cảnh Bằng AI**: Hệ thống sẽ sinh danh sách phân cảnh kèm prompt hình ảnh, và kịch bản phân đoạn thoại chuẩn.
+1. Dán link video YouTube cần tham khảo (hoặc dán văn bản ý tưởng vào ô **Kịch Bản Thô**).
+2. Bấm **✨ Tạo Phân Cảnh Bằng AI**: Hệ thống sẽ sinh danh sách phân cảnh kèm prompt hình ảnh và kịch bản phân đoạn thoại chuẩn.
 3. Bấm **📋 Viết Tiêu Đề & Mô Tả**: Nhận ngay bộ Metadata tối ưu SEO.
 4. Bấm **⚡ Điền vào Form Tạo Video** hoặc tải về file `.txt`.
 
 ### Bước 2: Tạo Giọng Đọc Thuyết Minh (Tab 2)
 1. Bấm **⟵ Lấy từ Trợ Lý Kịch Bản** để tự động điền kịch bản thoại.
-2. Chọn nhà cung cấp: **Viettel AI** (giọng đọc truyền cảm chuẩn Việt) hoặc **ElevenLabs** (giọng studio cao cấp).
-3. Bấm **🎙️ Tạo Audio Ngay**: Sau vài giây, bạn có thể nghe thử và bấm **⚡ Dùng cho Tạo Video**.
+2. Chọn nhà cung cấp giọng nói:
+   - **💻 Local TTS (VieNeu)**: Mặc định chuẩn tiếng Việt 48kHz (Offline 100%, 0đ).
+     - *Chọn giọng dựng sẵn*: Chọn từ dropdown 23 giọng 3 miền (Minh Quân, Mai Anh, Quỳnh Anh, Thái Sơn, Thùy Dung...).
+     - *Hoặc Clone giọng tức thì*: Kéo thả file ghi âm mẫu (3–8s) vào hộp kéo thả, AI sẽ nhái theo giọng mẫu.
+   - **🌐 Kokoro TTS**: Chọn khi bạn làm video đọc tiếng Anh (giọng chuẩn US/UK như `af_heart`, `am_adam`...).
+   - **🇻🇳 Viettel AI**: Tùy chọn Cloud dự phòng.
+3. Bấm **🎙️ Tạo Audio Ngay**: Nghe thử và bấm **⚡ Dùng cho Tạo Video**.
 
 ### Bước 3: Tạo Ảnh Phân Cảnh (Tùy chọn)
-- Sử dụng prompt ở Bước 1 để tạo ảnh từ các công cụ AI (Midjourney, WhiskLab, Google Flow) hoặc sử dụng chức năng tạo ảnh tích hợp bằng Gemini Image API.
+- Sử dụng prompt ở Bước 1 để tạo ảnh từ công cụ ngoài hoặc sử dụng tính năng tạo ảnh tự động tích hợp bằng Gemini Image API.
 - Đặt tên các file ảnh theo thứ tự phân cảnh (ví dụ: `scene1.png`, `scene2.png`,...).
 
 ### Bước 4: Render Video Hoàn Chỉnh (Tab 3)
 1. **Nguồn dữ liệu**:
-   - Tải lên file âm thanh giọng đọc (`.mp3`).
-   - Tải lên file kịch bản phân đoạn (`.txt`).
-   - Tải lên danh sách ảnh Scene (`.png`, `.jpg`).
+   - File âm thanh giọng đọc (`.wav` hoặc `.mp3`).
+   - File kịch bản phân đoạn (`.txt`).
+   - Danh sách ảnh Scene (`.png`, `.jpg`).
 2. **Nền & Hiệu ứng**:
-   - *(Tùy chọn)* Tải lên ảnh nền chung và chọn chế độ tách nền:
+   - Tải lên ảnh nền chung và chọn chế độ tách nền:
      - `whitekey`: Dành cho tranh vẽ, phác thảo sketch, ảnh nền trắng.
      - `rembg`: Dành cho ảnh chụp người thật, vật thể.
-   - *(Tùy chọn)* Tải lên file nhạc nền (`.mp3`, `.wav`) và kéo thanh chỉnh âm lượng BGM.
+   - Tải lên file nhạc nền (`.mp3`, `.wav`) và chỉnh âm lượng BGM.
 3. **Cài đặt xuất**:
-   - Chọn tỷ lệ khung hình: **16:9** (ngang) hoặc **9:16** (dọc).
+   - Chọn tỷ lệ khung hình: **16:9** (ngang) hoặc **9:16** (dọc Shorts/TikTok).
    - Tùy chỉnh tốc độ video (**0.5x - 2.0x**).
-   - Bật/tắt hiệu ứng đọc **Subtitle Karaoke**.
+   - Bật hiệu ứng **Subtitle Karaoke**.
 4. Bấm **🚀 Bắt Đầu Tạo Video** và theo dõi thanh tiến độ thời gian thực.
 
 ### Bước 5: Xem Trước & Đăng Tải Lên YouTube
@@ -250,7 +263,6 @@ Mở trình duyệt và truy cập: **[http://localhost:3000](http://localhost:3
 2. Tải video về máy tính với nút **⬇️ Tải Video**.
 3. Tại phần **Upload lên YouTube**:
    - Bấm **🔗 Kết nối YouTube** và cấp quyền qua Google OAuth.
-   - Tiêu đề, mô tả và tags sẽ tự động được điền sẵn từ bước tạo kịch bản AI.
    - Chọn chế độ bảo mật (Public / Unlisted / Private) và bấm **▶️ Tải lên YouTube**.
 
 ---
@@ -267,16 +279,15 @@ Mở trình duyệt và truy cập: **[http://localhost:3000](http://localhost:3
 
 ## 📝 Khắc Phục Sự Cố (Troubleshooting)
 
-- **Lỗi `redirect_uri_mismatch` khi kết nối YouTube**:
-  - Truy cập Google Cloud Console -> APIs & Services -> Credentials.
-  - Chọn Client ID của bạn và thêm chính xác URL sau vào mục **Authorized redirect URIs**:
-    `http://localhost:3000/oauth2callback`
+- **Lỗi `faster-whisper is not installed`**:
+  - Chạy lệnh cài đặt vào môi trường ảo: `.\.venv\Scripts\pip.exe install faster-whisper`.
 - **Lỗi không tìm thấy FFmpeg (`ffmpeg: command not found`)**:
   - Đảm bảo bạn đã cài đặt FFmpeg và đường dẫn thư mục `bin` chứa `ffmpeg.exe` đã được thêm vào biến môi trường `PATH`.
   - Bạn cũng có thể cấu hình đường dẫn trực tiếp trong `.env`: `FFMPEG_PATH=C:\ffmpeg\bin\ffmpeg.exe`.
-- **Lỗi khi chạy tách nền hoặc Whisper offline**:
-  - Đảm bảo biến `PYTHON_PATH` trong `.env` trỏ đúng vào file thực thi python của virtualenv (ví dụ: `.venv/Scripts/python.exe` trên Windows).
-  - Kiểm tra xem bạn đã cài đặt các package: `pip install rembg faster-whisper torch`.
+- **Lỗi đường dẫn Python khi chạy Local TTS hoặc Rembg**:
+  - Đảm bảo biến `PYTHON_PATH` trong `.env` trỏ đúng vào file thực thi python của virtualenv (ví dụ: `PYTHON_PATH=C:\personal_kyvu\CODE\editVideoTool\.venv\Scripts\python.exe`).
+- **Lỗi `redirect_uri_mismatch` khi kết nối YouTube**:
+  - Thêm chính xác URL sau vào mục **Authorized redirect URIs** trên Google Cloud Console: `http://localhost:3000/oauth2callback`.
 
 ---
 
