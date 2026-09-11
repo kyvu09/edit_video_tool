@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const VOICES_DIR = path.join(__dirname, '..', '..', 'uploads', 'cloned_voices');
 const METADATA_FILE = path.join(VOICES_DIR, 'voices.json');
@@ -30,26 +31,44 @@ function getCustomVoices() {
 }
 
 /**
- * Lưu một giọng clone mới từ file audio
+ * Lưu một giọng clone mới từ file audio (tự động chuẩn hóa về WAV chất lượng cao)
  * @param {string} name - Tên người dùng đặt cho giọng
  * @param {string} tempFilePath - Đường dẫn file audio tạm
- * @param {string} [originalExt] - Đuôi file gốc (ví dụ: .wav, .mp3)
+ * @param {string} [originalExt] - Đuôi file gốc (ví dụ: .wav, .mp3, .m4a)
  */
 async function saveCustomVoice(name, tempFilePath, originalExt = '.wav') {
     ensureDir();
     const voices = getCustomVoices();
     const id = `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const ext = originalExt.startsWith('.') ? originalExt : `.${originalExt}`;
-    const filename = `${id}${ext}`;
-    const destPath = path.join(VOICES_DIR, filename);
+    const wavFilename = `${id}.wav`;
+    const wavDestPath = path.join(VOICES_DIR, wavFilename);
 
-    // Copy file vào thư mục lưu trữ vĩnh viễn
-    await fs.promises.copyFile(tempFilePath, destPath);
+    let converted = false;
+    try {
+        execFileSync('ffmpeg', [
+            '-y', '-i', tempFilePath,
+            '-vn', '-acodec', 'pcm_s16le', '-ar', '44100', '-ac', '1',
+            wavDestPath
+        ], { stdio: 'ignore' });
+        converted = true;
+    } catch (e) {
+        console.warn('[VoiceManager] FFmpeg conversion failed, falling back to direct copy:', e.message);
+    }
+
+    let actualFilename = wavFilename;
+    let actualDestPath = wavDestPath;
+
+    if (!converted) {
+        const ext = originalExt.startsWith('.') ? originalExt : `.${originalExt}`;
+        actualFilename = `${id}${ext}`;
+        actualDestPath = path.join(VOICES_DIR, actualFilename);
+        await fs.promises.copyFile(tempFilePath, actualDestPath);
+    }
 
     const newVoice = {
         id,
         name: name.trim() || 'Giọng mẫu chưa đặt tên',
-        filename,
+        filename: actualFilename,
         createdAt: new Date().toISOString()
     };
 
@@ -58,7 +77,7 @@ async function saveCustomVoice(name, tempFilePath, originalExt = '.wav') {
 
     return {
         ...newVoice,
-        filePath: destPath
+        filePath: actualDestPath
     };
 }
 

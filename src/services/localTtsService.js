@@ -82,8 +82,26 @@ async function generateSpeech(text, options = {}) {
 
         pyProc.on('close', async (code) => {
             if (code !== 0) {
-                console.error('[LocalTTS] Python script error:', stderrData || stdoutData);
-                return reject(new Error(`Local TTS exited with code ${code}: ${stderrData || stdoutData}`));
+                let actualError = '';
+                try {
+                    const jsonMatch = stdoutData.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const parsed = JSON.parse(jsonMatch[0]);
+                        if (parsed.error) actualError = parsed.error;
+                    }
+                } catch (e) {}
+
+                if (!actualError) {
+                    const cleanedStderr = stderrData
+                        .split('\n')
+                        .filter(l => !l.includes('unauthenticated requests to the HF Hub') && !l.includes('HF_HUB_DISABLE'))
+                        .join('\n')
+                        .trim();
+                    actualError = cleanedStderr || stdoutData.trim() || stderrData.trim() || `Process exited with code ${code}`;
+                }
+
+                console.error('[LocalTTS] Python script error:', actualError);
+                return reject(new Error(`Local TTS: ${actualError}`));
             }
 
             try {

@@ -30,7 +30,52 @@ if sys.platform == "win32":
     except AttributeError:
         pass
 
+import warnings
+import logging
+warnings.filterwarnings("ignore")
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+
+
+def ensure_wav_format(audio_path: str) -> tuple[str, bool]:
+    """Ensures reference audio is a valid WAV readable by soundfile (converts m4a, mp3, ogg, etc. via ffmpeg).
+    Returns (clean_wav_path, is_temporary)
+    """
+    if not audio_path or not os.path.exists(audio_path):
+        return audio_path, False
+
+    # Check if directly readable by soundfile
+    try:
+        import soundfile as sf
+        with sf.SoundFile(audio_path) as f:
+            return audio_path, False
+    except Exception:
+        pass
+
+    # Convert non-standard audio (m4a, aac, etc.) to 44.1kHz mono WAV via ffmpeg
+    import subprocess
+    import tempfile
+
+    temp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    temp_wav.close()
+    temp_wav_path = temp_wav.name
+
+    cmd = [
+        "ffmpeg", "-y", "-i", audio_path,
+        "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "1",
+        temp_wav_path
+    ]
+    try:
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        return temp_wav_path, True
+    except Exception as e:
+        if os.path.exists(temp_wav_path):
+            try:
+                os.remove(temp_wav_path)
+            except Exception:
+                pass
+        raise RuntimeError(f"Không thể đọc file âm thanh mẫu '{os.path.basename(audio_path)}': {e}")
 
 
 def generate_vieneu(text: str, output_path: str, voice: str = "Minh Quân", ref_audio: str = None, speed: float = 1.0) -> tuple[float, str]:
@@ -40,14 +85,25 @@ def generate_vieneu(text: str, output_path: str, voice: str = "Minh Quân", ref_
     v = Vieneu()
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
-    if ref_audio and os.path.exists(ref_audio):
-        audio = v.infer(text, ref_audio=ref_audio, denoise=True)
-        chosen_voice = f"Clone ({os.path.basename(ref_audio)})"
-    else:
-        if not voice or voice in ("default", "auto"):
-            voice = "Minh Quân"
-        audio = v.infer(text, voice=voice)
-        chosen_voice = voice
+    temp_clean_ref = None
+    try:
+        if ref_audio and os.path.exists(ref_audio):
+            clean_ref_audio, is_temp = ensure_wav_format(ref_audio)
+            if is_temp:
+                temp_clean_ref = clean_ref_audio
+            audio = v.infer(text, ref_audio=clean_ref_audio, denoise=True)
+            chosen_voice = f"Clone ({os.path.basename(ref_audio)})"
+        else:
+            if not voice or voice in ("default", "auto"):
+                voice = "Minh Quân"
+            audio = v.infer(text, voice=voice)
+            chosen_voice = voice
+    finally:
+        if temp_clean_ref and os.path.exists(temp_clean_ref):
+            try:
+                os.remove(temp_clean_ref)
+            except Exception:
+                pass
 
     v.save(audio, output_path)
     sample_rate = 48000
