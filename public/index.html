@@ -23,7 +23,7 @@
                     <div class="sidebar-logo-text">
                         <h1>Edit Video Tool</h1>
                         <p>AI Video Creator Pipeline</p>
-                        <p>developer: Kyvu</p>
+                        <p>developer: kyvu</p>
                     </div>
                 </div>
                 <a href="/debug.html" class="link-debugger">Tách Nền Debugger</a>
@@ -125,15 +125,18 @@
                                 <span class="section-card-header-title">Kịch Bản Thô</span>
                             </div>
                             <div class="section-card-body">
-                                <p class="upload-hint">Dán ý tưởng, văn bản tự do. AI sẽ tự động phân nhỏ thành từng Scene và viết prompt vẽ hình.</p>
+                                <p class="upload-hint">Dán ý tưởng, văn bản tự do hoặc transcript tiếng Anh/Việt. AI có thể viết lại thành kịch bản tiếng Việt mới, hoặc phân cảnh và viết prompt hình ảnh.</p>
                                 <textarea id="rawScriptText"
-                                    placeholder="Ví dụ: Người thành công không phải là người thông minh nhất, mà là người nỗ lực nhiều nhất. Hãy luôn kiên trì vượt qua khó khăn nhé..."
+                                    placeholder="Ví dụ: Dán transcript tiếng Anh hoặc ý tưởng kịch bản vào đây..."
                                     rows="6" class="custom-textarea" style="margin-top: 8px;"></textarea>
-                                <div style="display: flex; gap: 12px; margin-top: 4px;">
-                                    <button id="btnGenerateScenes" type="button" class="btn-submit" style="flex: 1;">
+                                <div style="display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap;">
+                                    <button id="btnCreateContent" type="button" class="btn-submit" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #059669, #10b981);">
+                                        ✍️ Viết Lại Content Mới
+                                    </button>
+                                    <button id="btnGenerateScenes" type="button" class="btn-submit" style="flex: 1; min-width: 180px;">
                                         ✨ Tạo Phân Cảnh Bằng AI
                                     </button>
-                                    <button id="btnGenerateMetadata" type="button" class="btn-submit" style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
+                                    <button id="btnGenerateMetadata" type="button" class="btn-submit" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
                                         📋 Viết Tiêu Đề & Mô Tả
                                     </button>
                                 </div>
@@ -141,6 +144,11 @@
                         </div>
 
                         <!-- AI Progress -->
+                        <div id="aiCreateContentProgress" class="ai-progress" style="display: none;">
+                            <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px;"></div>
+                            <p id="aiCreateContentProgressText">Đang viết lại nội dung thành kịch bản mới bằng Gemini AI...</p>
+                        </div>
+
                         <div id="aiProgress" class="ai-progress" style="display: none;">
                             <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px;"></div>
                             <p id="aiProgressText">Đang phân tích kịch bản thô...</p>
@@ -149,6 +157,34 @@
                         <div id="aiMetadataProgress" class="ai-progress" style="display: none;">
                             <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px;"></div>
                             <p id="aiMetadataProgressText">Đang viết tiêu đề & mô tả...</p>
+                        </div>
+
+                        <!-- Create Content Results -->
+                        <div id="aiCreateContentResults" class="ai-results" style="display: none;">
+                            <div class="section-card">
+                                <div class="section-card-header emerald">
+                                    <span class="section-card-header-icon">✍️</span>
+                                    <span class="section-card-header-title">Kịch Bản Mới Đã Viết Lại</span>
+                                </div>
+                                <div class="section-card-body">
+                                    <p class="upload-hint">Kịch bản đã được AI biên soạn lại thành lời kể tiếng Việt liền mạch, hấp dẫn.</p>
+                                    <div class="textarea-container" style="margin-top: 8px;">
+                                        <textarea id="aiCreatedContentOutput" rows="8" class="custom-textarea" style="padding-right: 90px; font-family: inherit; font-size: 0.95rem; line-height: 1.6;"></textarea>
+                                        <button id="btnCopyCreatedContent" type="button" class="btn-copy">📋 Sao chép</button>
+                                    </div>
+                                    <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+                                        <button id="btnUseAsRawScript" type="button" class="btn-secondary-action" style="flex: 1; min-width: 180px;">
+                                            🔄 Dán vào Kịch Bản Thô
+                                        </button>
+                                        <button id="btnApplyCreatedContent" type="button" class="btn-secondary-action" style="flex: 1; min-width: 180px;">
+                                            ⚡ Điền vào Form Tạo Video
+                                        </button>
+                                        <button id="btnDownloadCreatedContent" type="button" class="btn-secondary-action" style="flex: 1; min-width: 130px;">
+                                            ⬇️ Tải file .txt
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Metadata Results -->
@@ -313,10 +349,18 @@
                             <div class="section-card-body" style="display: flex; flex-direction: column; gap: 14px;">
                                 <!-- Dropdown chọn giọng có sẵn -->
                                 <div id="presetVoiceWrapper">
-                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">
-                                        🎙️ Chọn Giọng Đọc Có Sẵn:
-                                    </label>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0;">
+                                            🎙️ Chọn Giọng Đọc:
+                                        </label>
+                                        <button type="button" id="btnManageCustomVoices" style="background: none; border: none; color: #818cf8; font-size: 12px; cursor: pointer; text-decoration: underline;">
+                                            ⚙️ Quản lý giọng đã lưu (<span id="savedVoicesCountBadge">0</span>)
+                                        </button>
+                                    </div>
                                     <select id="ttsVoiceSelect" class="custom-select-voice">
+                                        <optgroup label="⭐ Giọng Đã Lưu Của Bạn" id="savedCustomVoicesOptgroup" style="display: none;">
+                                            <!-- Dynamically injected saved cloned voices -->
+                                        </optgroup>
                                         <optgroup label="Miền Bắc">
                                             <option value="Minh Quân" selected>Minh Quân — Nam · Bắc (Tự nhiên, Mặc định)</option>
                                             <option value="Minh Đức">Minh Đức — Nam · Bắc (Tin tức / Thời sự)</option>
@@ -341,12 +385,34 @@
                                             <option value="Ngọc Trân">Ngọc Trân — Nữ · Trung (Tự nhiên)</option>
                                         </optgroup>
                                     </select>
+
+                                    <!-- Panel Quản lý giọng đã lưu -->
+                                    <div id="customVoicesManagerModal" style="display: none; margin-top: 10px; padding: 12px; background: rgba(30, 41, 59, 0.7); border: 1px solid var(--border-default); border-radius: 8px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-size: 12.5px; font-weight: 700; color: #cbd5e1;">📁 Các Giọng Clone Bạn Đã Lưu Trên Máy</span>
+                                            <button type="button" id="btnCloseCustomVoicesManager" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px;">✕</button>
+                                        </div>
+                                        <div id="customVoicesListContainer" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                                            <!-- Rendered dynamically -->
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <!-- Clone giọng mẫu (3-8s) -->
-                                <div id="voiceCloneWrapper" style="padding-top: 10px; border-top: 1px dashed var(--border-default);">
+                                <!-- Nút Clone Voice để người dùng bấm vào mới mở khung upload audio -->
+                                <div id="cloneVoiceActionRow" style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                                    <button type="button" id="btnToggleVoiceClone" class="btn-toggle-clone">
+                                        <span id="cloneToggleBtnText">🧬 Clone Giọng Mới (Tải audio 3–8s)</span>
+                                        <span id="cloneToggleIcon">▼</span>
+                                    </button>
+                                    <span id="cloneActiveBadge" style="display: none; font-size: 11.5px; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px;">
+                                        ● Đang có file mẫu clone
+                                    </span>
+                                </div>
+
+                                <!-- Clone giọng mẫu (3-8s) - Ẩn mặc định, bấm nút trên để mở -->
+                                <div id="voiceCloneWrapper" style="display: none; padding-top: 12px; margin-top: 4px; border-top: 1px dashed var(--border-default);">
                                     <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">
-                                        🧬 Clone Giọng Tức Thì (Tùy chọn):
+                                        🧬 Clone Giọng Mới (Tải audio 3–8s):
                                     </label>
                                     
                                     <div id="dropZoneRefAudio" class="ref-audio-dropzone">
@@ -362,6 +428,21 @@
                                             <button id="btnClearRefAudio" type="button" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;">✕ Bỏ chọn</button>
                                         </div>
                                     </div>
+
+                                    <!-- Box Lưu Giọng Để Dùng Lần Sau -->
+                                    <div id="saveCloneVoiceContainer" style="display: none; margin-top: 10px; padding: 10px 12px; background: rgba(99, 102, 241, 0.08); border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.25);">
+                                        <label style="font-size: 12px; font-weight: 600; color: #a5b4fc; display: block; margin-bottom: 6px;">
+                                            💾 Bạn có muốn lưu lại giọng này trên máy để lần sau dùng ngay không?
+                                        </label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="text" id="customVoiceNameInput" class="custom-select-voice" placeholder="Đặt tên giọng (ví dụ: Giọng của tôi, MC thời sự...)" style="flex: 1; padding: 7px 12px; font-size: 12.5px;">
+                                            <button type="button" id="btnSaveCustomVoice" class="btn-submit" style="white-space: nowrap; padding: 7px 14px; font-size: 12px; background: linear-gradient(135deg, #6366f1, #4f46e5); font-weight: 600;">
+                                                💾 Lưu Giọng
+                                            </button>
+                                        </div>
+                                        <div id="saveCustomVoiceStatus" style="font-size: 11.5px; margin-top: 5px; display: none;"></div>
+                                    </div>
+
                                     <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 5px; display: block;">
                                         💡 Khi có file mẫu (wav/mp3 từ 3–8s), AI sẽ ưu tiên <b>clone y hệt giọng nói mẫu</b> thay vì dùng giọng dựng sẵn.
                                     </small>
@@ -803,6 +884,86 @@
         </optgroup>
     `;
 
+    // Custom Saved Voices State
+    window.savedCustomVoices = [];
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag));
+    }
+
+    function getSavedVoiceOptionsHtml() {
+        if (!window.savedCustomVoices || window.savedCustomVoices.length === 0) {
+            return '<optgroup label="⭐ Giọng Đã Lưu Của Bạn" id="savedCustomVoicesOptgroup" style="display: none;"></optgroup>';
+        }
+        const options = window.savedCustomVoices.map(v => 
+            `<option value="${v.id}">⭐ ${escapeHtml(v.name)} (Đã lưu)</option>`
+        ).join('');
+        return `<optgroup label="⭐ Giọng Đã Lưu Của Bạn" id="savedCustomVoicesOptgroup">${options}</optgroup>`;
+    }
+
+    function renderSavedCustomVoices() {
+        const badge = document.getElementById('savedVoicesCountBadge');
+        if (badge) badge.textContent = window.savedCustomVoices.length;
+
+        const provider = document.getElementById('ttsProvider') ? document.getElementById('ttsProvider').value : 'local';
+        const voiceSelect = document.getElementById('ttsVoiceSelect');
+        if (voiceSelect && provider === 'local') {
+            const currentVal = voiceSelect.value;
+            voiceSelect.innerHTML = getSavedVoiceOptionsHtml() + vieneuVoiceOptionsHtml;
+            if (currentVal && voiceSelect.querySelector(`option[value="${currentVal}"]`)) {
+                voiceSelect.value = currentVal;
+            }
+        }
+
+        const listContainer = document.getElementById('customVoicesListContainer');
+        if (listContainer) {
+            if (window.savedCustomVoices.length === 0) {
+                listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 12px 6px;">Chưa có giọng nào được lưu.<br>Kéo thả file âm thanh (3–8s) vào khung bên dưới rồi bấm <b>Lưu Giọng</b>!</div>';
+            } else {
+                listContainer.innerHTML = window.savedCustomVoices.map(v => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.06);">
+                        <div style="display: flex; flex-direction: column; overflow: hidden; margin-right: 8px;">
+                            <span style="font-size: 12.5px; font-weight: 600; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(v.name)}">
+                                ⭐ ${escapeHtml(v.name)}
+                            </span>
+                            <span style="font-size: 10.5px; color: var(--text-muted);">
+                                ${v.createdAt ? new Date(v.createdAt).toLocaleDateString('vi-VN') : 'Đã lưu'}
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
+                            <button type="button" class="btn-use-custom-voice" data-id="${v.id}" style="background: rgba(99, 102, 241, 0.25); border: 1px solid #6366f1; color: #c7d2fe; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-weight: 500;">
+                                Chọn
+                            </button>
+                            <button type="button" class="btn-delete-custom-voice" data-id="${v.id}" data-name="${escapeHtml(v.name)}" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    }
+
+    async function loadCustomVoices() {
+        try {
+            const res = await fetch('/api/tts/custom-voices');
+            if (res.ok) {
+                const data = await res.json();
+                window.savedCustomVoices = data.voices || [];
+                renderSavedCustomVoices();
+            }
+        } catch (e) {
+            console.warn('Cannot load custom voices:', e);
+        }
+    }
+
     function selectProvider(value) {
         document.querySelectorAll('.provider-card').forEach(card => {
             card.classList.toggle('selected', card.dataset.provider === value);
@@ -811,23 +972,27 @@
 
         const voiceContainer = document.getElementById('ttsVoiceOptionsContainer');
         const voiceSelect = document.getElementById('ttsVoiceSelect');
+        const cloneActionRow = document.getElementById('cloneVoiceActionRow');
         const cloneWrapper = document.getElementById('voiceCloneWrapper');
 
         if (value === 'local') {
             voiceContainer.style.display = 'block';
-            voiceSelect.innerHTML = vieneuVoiceOptionsHtml;
-            cloneWrapper.style.display = 'block';
+            voiceSelect.innerHTML = getSavedVoiceOptionsHtml() + vieneuVoiceOptionsHtml;
+            if (cloneActionRow) cloneActionRow.style.display = 'flex';
         } else if (value === 'kokoro') {
             voiceContainer.style.display = 'block';
             voiceSelect.innerHTML = kokoroVoiceOptionsHtml;
-            cloneWrapper.style.display = 'none';
+            if (cloneActionRow) cloneActionRow.style.display = 'none';
+            if (cloneWrapper) cloneWrapper.style.display = 'none';
         } else {
             // Viettel AI
             voiceContainer.style.display = 'none';
+            if (cloneActionRow) cloneActionRow.style.display = 'none';
+            if (cloneWrapper) cloneWrapper.style.display = 'none';
         }
     }
 
-    // Init Dropzone for Reference Audio Cloning
+    // Init Dropzone & Custom Voices Management
     document.addEventListener('DOMContentLoaded', () => {
         const dropZone = document.getElementById('dropZoneRefAudio');
         const fileInput = document.getElementById('ttsRefAudioInput');
@@ -836,6 +1001,98 @@
         const fileNameDisplay = document.getElementById('refAudioFileName');
         const btnClear = document.getElementById('btnClearRefAudio');
 
+        const saveCloneContainer = document.getElementById('saveCloneVoiceContainer');
+        const customVoiceNameInput = document.getElementById('customVoiceNameInput');
+        const btnSaveCustomVoice = document.getElementById('btnSaveCustomVoice');
+        const saveStatus = document.getElementById('saveCustomVoiceStatus');
+
+        const btnManageCustomVoices = document.getElementById('btnManageCustomVoices');
+        const modalManager = document.getElementById('customVoicesManagerModal');
+        const btnCloseModal = document.getElementById('btnCloseCustomVoicesManager');
+        const listContainer = document.getElementById('customVoicesListContainer');
+        const voiceSelect = document.getElementById('ttsVoiceSelect');
+
+        // Load voices initially
+        loadCustomVoices();
+
+        const btnToggleVoiceClone = document.getElementById('btnToggleVoiceClone');
+        const cloneWrapper = document.getElementById('voiceCloneWrapper');
+        const cloneToggleBtnText = document.getElementById('cloneToggleBtnText');
+        const cloneToggleIcon = document.getElementById('cloneToggleIcon');
+        const cloneActiveBadge = document.getElementById('cloneActiveBadge');
+
+        // Toggle Voice Clone Container
+        if (btnToggleVoiceClone && cloneWrapper) {
+            btnToggleVoiceClone.addEventListener('click', () => {
+                const isHidden = cloneWrapper.style.display === 'none' || !cloneWrapper.style.display;
+                if (isHidden) {
+                    cloneWrapper.style.display = 'block';
+                    btnToggleVoiceClone.classList.add('active');
+                    if (cloneToggleBtnText) cloneToggleBtnText.textContent = '✕ Đóng Khung Clone Giọng';
+                    if (cloneToggleIcon) cloneToggleIcon.textContent = '▲';
+                } else {
+                    cloneWrapper.style.display = 'none';
+                    btnToggleVoiceClone.classList.remove('active');
+                    if (cloneToggleBtnText) cloneToggleBtnText.textContent = '🧬 Clone Giọng Mới (Tải audio 3–8s)';
+                    if (cloneToggleIcon) cloneToggleIcon.textContent = '▼';
+                }
+            });
+        }
+
+        // Toggle custom voices manager modal
+        if (btnManageCustomVoices && modalManager) {
+            btnManageCustomVoices.addEventListener('click', () => {
+                const isHidden = modalManager.style.display === 'none' || !modalManager.style.display;
+                modalManager.style.display = isHidden ? 'block' : 'none';
+            });
+        }
+        if (btnCloseModal && modalManager) {
+            btnCloseModal.addEventListener('click', () => {
+                modalManager.style.display = 'none';
+            });
+        }
+
+        // Delegate "Chọn" and "Xóa" in custom voices list
+        if (listContainer) {
+            listContainer.addEventListener('click', async (e) => {
+                const useBtn = e.target.closest('.btn-use-custom-voice');
+                if (useBtn) {
+                    const voiceId = useBtn.dataset.id;
+                    if (voiceSelect) {
+                        voiceSelect.value = voiceId;
+                    }
+                    if (btnClear) btnClear.click();
+                    if (modalManager) modalManager.style.display = 'none';
+                    return;
+                }
+
+                const delBtn = e.target.closest('.btn-delete-custom-voice');
+                if (delBtn) {
+                    const voiceId = delBtn.dataset.id;
+                    const voiceName = delBtn.dataset.name || 'này';
+                    if (confirm(`Bạn có chắc chắn muốn xóa giọng "${voiceName}" đã lưu không?`)) {
+                        try {
+                            delBtn.disabled = true;
+                            delBtn.textContent = '...';
+                            const res = await fetch(`/api/tts/custom-voices/${voiceId}`, { method: 'DELETE' });
+                            const data = await res.json();
+                            if (data.success) {
+                                if (voiceSelect && voiceSelect.value === voiceId) {
+                                    voiceSelect.value = 'Minh Quân';
+                                }
+                                await loadCustomVoices();
+                            } else {
+                                alert(data.error || 'Lỗi khi xóa giọng');
+                            }
+                        } catch (err) {
+                            alert('Lỗi kết nối: ' + err.message);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Dropzone handlers
         if (dropZone && fileInput) {
             dropZone.addEventListener('click', (e) => {
                 if (e.target !== btnClear && !btnClear.contains(e.target)) {
@@ -873,6 +1130,11 @@
                 selectedInfo.style.display = 'none';
                 dropText.style.display = 'block';
                 dropZone.classList.remove('has-file');
+
+                if (cloneActiveBadge) cloneActiveBadge.style.display = 'none';
+                if (saveCloneContainer) saveCloneContainer.style.display = 'none';
+                if (customVoiceNameInput) customVoiceNameInput.value = '';
+                if (saveStatus) saveStatus.style.display = 'none';
             });
 
             function showSelectedFile(file) {
@@ -880,7 +1142,79 @@
                 dropText.style.display = 'none';
                 selectedInfo.style.display = 'flex';
                 dropZone.classList.add('has-file');
+
+                if (cloneActiveBadge) cloneActiveBadge.style.display = 'inline-block';
+                if (saveCloneContainer) saveCloneContainer.style.display = 'block';
+                if (customVoiceNameInput) {
+                    const baseName = file.name.replace(/\.[^/.]+$/, "");
+                    customVoiceNameInput.value = baseName;
+                }
+                if (saveStatus) saveStatus.style.display = 'none';
             }
+        }
+
+        // Save Custom Voice button
+        if (btnSaveCustomVoice) {
+            btnSaveCustomVoice.addEventListener('click', async () => {
+                const file = fileInput && fileInput.files && fileInput.files[0];
+                if (!file) {
+                    alert('Vui lòng chọn một file âm thanh mẫu (3–8s) trước!');
+                    return;
+                }
+
+                let voiceName = customVoiceNameInput ? customVoiceNameInput.value.trim() : '';
+                if (!voiceName) {
+                    voiceName = file.name.replace(/\.[^/.]+$/, "") || 'Giọng mẫu';
+                }
+
+                btnSaveCustomVoice.disabled = true;
+                const origHtml = btnSaveCustomVoice.innerHTML;
+                btnSaveCustomVoice.innerHTML = '⏳ Đang lưu...';
+                if (saveStatus) {
+                    saveStatus.style.display = 'block';
+                    saveStatus.style.color = '#818cf8';
+                    saveStatus.textContent = 'Đang lưu giọng vào máy...';
+                }
+
+                try {
+                    const formData = new FormData();
+                    formData.append('audioFile', file);
+                    formData.append('name', voiceName);
+
+                    const res = await fetch('/api/tts/custom-voices', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                        throw new Error(data.error || 'Lỗi lưu giọng');
+                    }
+
+                    if (saveStatus) {
+                        saveStatus.style.color = '#10b981';
+                        saveStatus.textContent = `✅ Đã lưu thành công "${data.voice.name}"! Giọng đã được thêm vào danh sách.`;
+                    }
+
+                    await loadCustomVoices();
+
+                    if (voiceSelect && data.voice && data.voice.id) {
+                        voiceSelect.value = data.voice.id;
+                    }
+
+                    // Reset dropzone after 1.2 seconds
+                    setTimeout(() => {
+                        if (btnClear) btnClear.click();
+                    }, 1200);
+                } catch (err) {
+                    if (saveStatus) {
+                        saveStatus.style.color = '#ef4444';
+                        saveStatus.textContent = `❌ Lỗi: ${err.message}`;
+                    }
+                } finally {
+                    btnSaveCustomVoice.disabled = false;
+                    btnSaveCustomVoice.innerHTML = origHtml;
+                }
+            });
         }
     });
     </script>

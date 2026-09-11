@@ -752,6 +752,16 @@ function initAIAssistant() {
     const btnCopyTitle = document.getElementById('btnCopyTitle');
     const btnCopyDesc = document.getElementById('btnCopyDesc');
 
+    // Create Content Elements
+    const btnCreateContent = document.getElementById('btnCreateContent');
+    const aiCreateContentProgress = document.getElementById('aiCreateContentProgress');
+    const aiCreateContentResults = document.getElementById('aiCreateContentResults');
+    const txtCreatedContentOutput = document.getElementById('aiCreatedContentOutput');
+    const btnCopyCreatedContent = document.getElementById('btnCopyCreatedContent');
+    const btnUseAsRawScript = document.getElementById('btnUseAsRawScript');
+    const btnApplyCreatedContent = document.getElementById('btnApplyCreatedContent');
+    const btnDownloadCreatedContent = document.getElementById('btnDownloadCreatedContent');
+
     // Extract Video Elements
     const btnExtractVideo = document.getElementById('btnExtractVideo');
     const txtVideoExtractUrl = document.getElementById('videoExtractUrl');
@@ -872,6 +882,107 @@ function initAIAssistant() {
             btnCopyDesc.textContent = '✅ Đã chép!';
             setTimeout(() => btnCopyDesc.textContent = origText, 2000);
         });
+    }
+
+    if (btnCreateContent) {
+        btnCreateContent.addEventListener('click', async () => {
+            const rawText = txtRawScript.value.trim();
+            if (!rawText) {
+                alert('Vui lòng nhập nội dung, ý tưởng hoặc transcript vào ô Kịch Bản Thô trước.');
+                return;
+            }
+
+            btnCreateContent.disabled = true;
+            if (aiCreateContentProgress) aiCreateContentProgress.style.display = 'block';
+            if (aiCreateContentResults) aiCreateContentResults.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/create-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rawScriptText: rawText })
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'Lỗi từ API Gemini');
+                }
+
+                const data = await response.json();
+                if (txtCreatedContentOutput) {
+                    txtCreatedContentOutput.value = data.content || '';
+                }
+
+                if (aiCreateContentProgress) aiCreateContentProgress.style.display = 'none';
+                if (aiCreateContentResults) {
+                    aiCreateContentResults.style.display = 'block';
+                    aiCreateContentResults.scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (error) {
+                console.error('Create Content Error:', error);
+                alert('Không thể tạo lại kịch bản: ' + error.message);
+                if (aiCreateContentProgress) aiCreateContentProgress.style.display = 'none';
+            } finally {
+                btnCreateContent.disabled = false;
+            }
+        });
+
+        if (btnCopyCreatedContent && txtCreatedContentOutput) {
+            btnCopyCreatedContent.addEventListener('click', () => {
+                txtCreatedContentOutput.select();
+                navigator.clipboard.writeText(txtCreatedContentOutput.value);
+                const origText = btnCopyCreatedContent.textContent;
+                btnCopyCreatedContent.textContent = '✅ Đã chép!';
+                setTimeout(() => btnCopyCreatedContent.textContent = origText, 2000);
+            });
+        }
+
+        if (btnUseAsRawScript && txtCreatedContentOutput && txtRawScript) {
+            btnUseAsRawScript.addEventListener('click', () => {
+                const text = txtCreatedContentOutput.value.trim();
+                if (!text) return;
+                txtRawScript.value = text;
+                txtRawScript.scrollIntoView({ behavior: 'smooth' });
+                const origText = btnUseAsRawScript.textContent;
+                btnUseAsRawScript.textContent = '✅ Đã dán vào Kịch Bản Thô!';
+                setTimeout(() => btnUseAsRawScript.textContent = origText, 2000);
+            });
+        }
+
+        if (btnApplyCreatedContent && txtCreatedContentOutput) {
+            btnApplyCreatedContent.addEventListener('click', () => {
+                const text = txtCreatedContentOutput.value.trim();
+                if (!text) return;
+
+                try {
+                    const file = new File([text], 'script.txt', { type: 'text/plain' });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    document.getElementById('script').files = dataTransfer.files;
+
+                    alert('Đã tự động điền kịch bản vào Form tạo Video!');
+                    switchTab('create-video-tab');
+                } catch (e) {
+                    console.error('Virtual file assignment error:', e);
+                }
+            });
+        }
+
+        if (btnDownloadCreatedContent && txtCreatedContentOutput) {
+            btnDownloadCreatedContent.addEventListener('click', () => {
+                const text = txtCreatedContentOutput.value;
+                if (!text) return;
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'script_created.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
     }
 
     btnGenerate.addEventListener('click', async () => {
@@ -1084,7 +1195,9 @@ function initAIAssistant() {
     
     if (btnFetchFromAI) {
         btnFetchFromAI.addEventListener('click', () => {
-            const aiScript = txtScriptOutput.value.trim();
+            const aiScript = (txtScriptOutput && txtScriptOutput.value.trim()) || 
+                             (txtCreatedContentOutput && txtCreatedContentOutput.value.trim()) || 
+                             (txtRawScript && txtRawScript.value.trim()) || '';
             if (!aiScript) {
                 alert('Chưa có kịch bản nào được tạo bên tab Trợ Lý Kịch Bản AI!');
                 return;

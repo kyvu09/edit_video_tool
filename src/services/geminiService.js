@@ -7,6 +7,7 @@ const PROMPT_CREATE_PATH = path.join(PROMPT_DIR, 'prompt-create-scenes.md');
 const PROMPT_SEPARATE_PATH = path.join(PROMPT_DIR, 'prompt-separate-scenes.md');
 const PROMPT_METADATA_PATH = path.join(PROMPT_DIR, 'video-metadata.md');
 const PROMPT_EXTRACT_PATH = path.join(PROMPT_DIR, 'extract-content.md');
+const PROMPT_CONTENT_PATH = path.join(PROMPT_DIR, 'create-content.md');
 
 /**
  * Call the Gemini API via Axios REST request
@@ -199,4 +200,28 @@ async function extractVideoContent(videoUrl) {
   }
 }
 
-module.exports = { generateScenes, generateVideoMetadata, extractVideoContent };
+async function createContentFromScript(rawScriptText) {
+  if (!rawScriptText || rawScriptText.trim() === '') {
+    throw new Error('Script text cannot be empty.');
+  }
+
+  let promptTemplate = '';
+  try {
+    promptTemplate = fs.readFileSync(PROMPT_CONTENT_PATH, 'utf8');
+  } catch (err) {
+    throw new Error(`Failed to read prompt file at ${PROMPT_CONTENT_PATH}: ${err.message}`);
+  }
+
+  let finalPrompt = '';
+  if (promptTemplate.includes('[PASTE CONTENT HERE]')) {
+    finalPrompt = promptTemplate.replace('[PASTE CONTENT HERE]', rawScriptText);
+  } else {
+    finalPrompt = promptTemplate + '\n\n' + rawScriptText;
+  }
+
+  console.log('[Gemini Service] Creating rewritten content from script...');
+  const result = await callGemini('', finalPrompt, 0.7);
+  return result;
+}
+
+module.exports = { generateScenes, generateVideoMetadata, extractVideoContent, createContentFromScript };

@@ -337,6 +337,22 @@ app.post('/api/extract-video', async (req, res) => {
   }
 });
 
+// Endpoint to rewrite/create content from script via Gemini
+app.post('/api/create-content', async (req, res) => {
+  try {
+    const { rawScriptText } = req.body;
+    if (!rawScriptText || rawScriptText.trim() === '') {
+      return res.status(400).json({ error: 'Script text cannot be empty.' });
+    }
+
+    const result = await geminiService.createContentFromScript(rawScriptText);
+    res.json({ content: result });
+  } catch (error) {
+    console.error('Error in /api/create-content:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- YouTube API Endpoints ---
 app.get('/api/youtube/auth', (req, res) => {
   try {
@@ -429,6 +445,7 @@ app.post('/api/flow-ai', async (req, res) => {
 });
 const localTtsService = require('./src/services/localTtsService');
 const viettelTtsService = require('./src/services/viettelTtsService');
+const voiceManager = require('./src/services/voiceManager');
 
 const ttsUpload = multer({
   dest: path.join(__dirname, 'uploads'),
@@ -447,7 +464,10 @@ app.post('/api/tts', (req, res, next) => {
     const { text, provider, voice, speed } = req.body;
     if (!text) return res.status(400).json({ error: 'Thiếu text kịch bản' });
     
-    const refAudio = req.file ? req.file.path : (req.body.refAudio || null);
+    let refAudio = req.file ? req.file.path : (req.body.refAudio || null);
+    if (!refAudio && voice && voice.startsWith('custom_')) {
+      refAudio = voiceManager.getVoicePathById(voice);
+    }
 
     let audioBuffer;
     let contentType = 'audio/wav';
@@ -480,6 +500,46 @@ app.post('/api/tts', (req, res, next) => {
       fs.unlink(req.file.path, () => {});
     }
     console.error('TTS Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Custom Cloned Voices Management Endpoints ─────────────────────────────────
+app.get('/api/tts/custom-voices', (req, res) => {
+  try {
+    const voices = voiceManager.getCustomVoices();
+    res.json({ success: true, voices });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/tts/custom-voices', ttsUpload.single('audioFile'), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!req.file) {
+      return res.status(400).json({ error: 'Thiếu file âm thanh mẫu' });
+    }
+    const originalExt = path.extname(req.file.originalname) || '.wav';
+    const newVoice = await voiceManager.saveCustomVoice(name || req.file.originalname, req.file.path, originalExt);
+    if (fs.existsSync(req.file.path)) {
+      fs.unlink(req.file.path, () => {});
+    }
+    res.json({ success: true, voice: newVoice });
+  } catch (err) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlink(req.file.path, () => {});
+    }
+    console.error('Save custom voice error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/tts/custom-voices/:id', async (req, res) => {
+  try {
+    const deleted = await voiceManager.deleteCustomVoice(req.params.id);
+    res.json({ success: true, deleted });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
