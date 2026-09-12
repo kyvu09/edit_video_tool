@@ -1,234 +1,118 @@
-# 🎬 Edit Video Tool - Setup Complete!
+# 🚀 Quickstart Guide - Edit Video Tool
 
-Your AI-powered video editor is ready to use. Here's what's been built:
-
-## 📦 What You Got
-
-### Backend Services (Node.js + Express)
-✅ **Whisper AI Integration** - Extracts timestamps from audio
-✅ **Script Parser** - Parses scene-based scripts  
-✅ **Timeline Generator** - Matches scenes with timestamps
-✅ **Subtitle Generator** - Creates SRT subtitle files
-✅ **FFmpeg Renderer** - Composes video with images, audio, subtitles
-
-### Frontend UI
-✅ Beautiful responsive web interface
-✅ Drag-and-drop file upload
-✅ Real-time progress tracking
-✅ Video download capability
-
-## 🚀 Quick Start
-
-### 1. Setup OpenAI API Key
-```bash
-# Edit .env file and replace with your actual API key
-OPENAI_API_KEY=sk-your-actual-key-here
-```
-
-Get your key from: https://platform.openai.com/api-keys
-
-### 2. Verify FFmpeg Installation
-```bash
-ffmpeg -version
-ffprobe -version
-```
-
-If not installed:
-```bash
-# Windows (Chocolatey)
-choco install ffmpeg
-
-# macOS
-brew install ffmpeg
-
-# Linux
-sudo apt-get install ffmpeg
-```
-
-### 3. Start the Server
-```bash
-npm start
-```
-
-Server will run on: http://localhost:3000
-
-### 4. Use the Tool
-1. Open http://localhost:3000 in your browser
-2. Upload audio, script, and images
-3. Click "Create Video"
-4. Download the generated MP4
-
-## 📝 Script Format Example
-
-Create a script.txt with this format:
-
-```
-SCENE 1
-Người thành công không phải là người thông minh nhất,
-
-SCENE 2
-mà là người nỗ lực nhiều nhất.
-
-SCENE 3
-Thông minh có thể giúp bạn bắt đầu nhanh hơn,
-```
-
-**Rules:**
-- Each scene starts with "SCENE N"
-- Text below scene header will be matched with audio
-- Number images to match: scene1.png, scene2.png, etc.
-
-## 🎥 How It Works
-
-```
-┌─────────────┐
-│  audio.mp3  │
-└──────┬──────┘
-       │ (Whisper AI)
-       ▼
-┌──────────────────┐
-│ Get timestamps:  │
-│ 0.0s - 4.5s      │
-│ 4.5s - 7.2s      │
-└──────┬───────────┘
-       │
-       ├──────────┬─────────────┬──────────┐
-       │          │             │          │
-   ┌───▼───┐ ┌───▼────┐ ┌────▼──┐ ┌────▼──┐
-   │ Scene │ │ Images │ │ Script│ │ Match │
-   │ Parser│ │ Upload │ │Parser │ │ Text  │
-   └───┬───┘ └───┬────┘ └────┬──┘ └────┬──┘
-       │          │           │        │
-       └──────────┴───────────┴────────┘
-              │ (Timeline Created)
-              ▼
-       ┌─────────────────┐
-       │ Generate SRT    │
-       │ Subtitles       │
-       └────────┬────────┘
-                │
-                ▼
-         ┌─────────────────┐
-         │ FFmpeg Render:  │
-         │ • Images        │
-         │ • Audio         │
-         │ • Subtitles     │
-         └────────┬────────┘
-                  │
-                  ▼
-            ┌──────────────┐
-            │  video.mp4   │
-            └──────────────┘
-```
-
-## 📂 Project Structure
-
-```
-editVideoTool/
-│
-├── server.js                          # Main Express app
-├── package.json                       # Dependencies
-├── .env                               # Configuration (keep secret!)
-├── README.md                          # Full documentation
-│
-├── src/services/
-│   ├── whisperService.js             # Whisper API integration
-│   ├── scriptParser.js                # Parse SCENE format
-│   ├── timelineGenerator.js           # Match scenes to timestamps
-│   ├── subtitleGenerator.js           # Create SRT files
-│   └── ffmpegRenderer.js              # Video composition
-│
-├── public/
-│   ├── index.html                     # Web UI
-│   ├── style.css                      # Styling
-│   └── app.js                         # Frontend logic
-│
-├── uploads/                           # Temp storage for uploads
-└── output/                            # Generated videos
-```
-
-## 🛠️ Development
-
-### Available Scripts
-```bash
-npm start      # Start server (http://localhost:3000)
-npm install    # Install dependencies
-```
-
-### Environment Variables
-```
-OPENAI_API_KEY     (Required) Your OpenAI API key
-PORT               (Optional) Server port (default: 3000)
-FFMPEG_PATH        (Optional) FFmpeg binary path
-FFPROBE_PATH       (Optional) FFprobe binary path
-```
-
-## 📋 Features Implemented
-
-- [x] Express backend with file upload handling
-- [x] Whisper AI integration for audio transcription
-- [x] Script parser for SCENE format
-- [x] Timeline generator with text matching
-- [x] SRT subtitle generation
-- [x] FFmpeg video composition
-- [x] Beautiful responsive UI
-- [x] Real-time progress tracking
-- [x] Video download capability
-
-## 🔮 Future Enhancements
-
-- WebSocket for real-time progress updates
-- Video effects (zoom, fade, pan)
-- Multi-language support
-- Background music mixing
-- Video templates
-- Batch processing
-- Cloud storage integration
-
-## ⚠️ Important Notes
-
-1. **API Costs**: Each upload uses OpenAI Whisper API (cheap but costs $)
-2. **Processing Time**: 1-minute video takes 2-5 minutes depending on image size
-3. **File Limits**: Audio < 25MB, images < 500KB each
-4. **FFmpeg Required**: Must be installed on your system
-
-## 🐛 Troubleshooting
-
-### Server won't start
-```bash
-# Check if port 3000 is in use
-netstat -ano | findstr :3000
-
-# Use different port
-PORT=3001 npm start
-```
-
-### Whisper API errors
-- Verify API key is correct
-- Check OpenAI account has credits
-- Audio file should be clean MP3
-
-### Video rendering fails
-- Ensure FFmpeg is installed
-- Check all image files exist
-- Try with smaller test images
-
-## 💡 Tips for Best Results
-
-1. **Audio**: Clear narration, consistent volume, no background music
-2. **Images**: 1920x1080 PNG, 500KB-1MB each, numbered sequentially
-3. **Script**: Short sentences (5-8 words), match spoken text closely
-4. **Timing**: Images should appear for duration of spoken sentence
-
-## 📞 Support
-
-For issues, check:
-- FFmpeg documentation: https://ffmpeg.org/
-- OpenAI Whisper: https://github.com/openai/whisper
-- Express.js: https://expressjs.com/
+Welcome to **Edit Video Tool**! This quickstart guide will get you up and running to render your very first AI video in **under 5 minutes**.
 
 ---
 
-**Ready to create amazing videos! 🎉**
+## ⚡ 1. Prerequisites
 
-Start the server with: `npm start`
+Ensure your machine has the following tools installed:
+1. **Node.js 18+** (Download from [nodejs.org](https://nodejs.org/)).
+2. **Python 3.10 – 3.12** (Python 3.12 recommended; ensure *"Add python.exe to PATH"* is checked during Windows setup).
+3. **FFmpeg**: Installed and accessible in your system `PATH`.
+   - Verify on Terminal / PowerShell:
+     ```bash
+     ffmpeg -version
+     ```
+   - On Windows, install via winget: `winget install Gyan.FFmpeg` or download from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/).
+   - On macOS: `brew install ffmpeg` | On Ubuntu/Debian: `sudo apt install ffmpeg`.
+
+---
+
+## 📦 2. 3-Step Installation
+
+### Step 1: Install Node Dependencies
+Open a terminal in the project directory:
+```bash
+npm install
+```
+
+### Step 2: Create Python Virtual Environment & Install AI Packages
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment:
+# On Windows:
+.venv\Scripts\activate
+# On macOS / Linux:
+source .venv/bin/activate
+
+# Install AI models, audio processing, and Local TTS libraries:
+pip install rembg pillow numpy scipy soundfile onnxruntime
+pip install vieneu kokoro-onnx
+pip install faster-whisper torch
+```
+
+### Step 3: Configure `.env` File
+Create a `.env` file in the project root directory (or copy from `.env.example`):
+```env
+PORT=3000
+NODE_ENV=development
+
+# Python executable inside your virtual environment
+PYTHON_PATH=.venv/Scripts/python.exe
+FFMPEG_PATH=ffmpeg
+FFPROBE_PATH=ffprobe
+
+# Offline Whisper speech recognition model (tiny | base | small | medium)
+LOCAL_WHISPER_MODEL=small
+
+# Google Gemini API Key (for script breakdown, SEO metadata, and image generation)
+GEMINI_API_KEY=your_gemini_api_key_here
+```
+> 💡 *Tip: Get a free Gemini API Key at [aistudio.google.com](https://aistudio.google.com/app/apikey)*
+
+---
+
+## 🎬 3. Start the Server
+
+Launch the application:
+```bash
+npm start
+```
+Open your browser and visit: **[http://localhost:3000](http://localhost:3000)**
+
+---
+
+## 🎯 4. 4-Step Walkthrough to Your First Video
+
+### 📝 Step 1: Create a Script (Tab 1: "Trợ Lý Kịch Bản")
+1. Enter your topic idea or paste a draft in the **Raw Script** box.
+2. Click **✨ Generate Scenes With AI**.
+3. Gemini AI will automatically:
+   - Split your story into scenes (`SCENE 1`, `SCENE 2`,...).
+   - Produce photographer-grade English prompts for visual generation.
+   - Click **📋 Generate Title & Description** to create YouTube SEO metadata.
+4. Click **⚡ Fill into Video Form** to seamlessly transfer the script to subsequent tabs.
+
+### 🎙️ Step 2: Generate AI Voiceover (Tab 2: "Tạo Audio AI")
+1. Click **⟵ Load from Script Assistant** to populate the dialogue.
+2. Choose your voice:
+   - **Preset Voice**: Choose from 23 regional Vietnamese voices (e.g., *Minh Quân*, *Mai Anh*, *Thái Sơn*...).
+   - **Clone Your Own Voice**:
+     - Click **`🧬 Clone Giọng Mới (Tải audio 3–8s) ▼`**.
+     - Drag and drop any 3–8s reference audio clip (supports `.m4a` from smartphones, `.mp3`, `.wav`).
+     - Enter a name and click **`💾 Lưu Giọng`** to save it locally for future reuse.
+3. Click **🎙️ Generate Audio Now** → Listen to the preview → Click **⚡ Use for Video Creation**.
+
+### 🎨 Step 3: Prepare Scene Images
+- Generate visuals using the prompts from Step 1 (via Midjourney, Leonardo, WhiskLab, or the built-in Gemini Image Generator).
+- Name image files sequentially: `scene1.png`, `scene2.png`, `scene3.png`,...
+
+### 🎥 Step 4: Render Your Video (Tab 3: "Render Video")
+1. Audio and script files are pre-filled from Step 2.
+2. Upload your scene images (`scene1.png`, `scene2.png`...).
+3. Optional configurations:
+   - Choose a background image and keying mode (`whitekey` for hand-drawn sketches / `rembg` for real-world photo cutouts).
+   - Add background music (BGM) and adjust volume slider (~15% - 25%).
+   - Select aspect ratio (**16:9** for standard YouTube or **9:16** for Shorts/TikTok).
+   - Check **Enable Subtitle Karaoke Effect**.
+4. Click **🚀 Start Creating Video**.
+5. Within seconds, your final MP4 video with Ken Burns motion, crossfades, and synced Karaoke subtitles will be ready to preview and download!
+
+---
+
+## ❓ Need More Details?
+- Read the in-depth user guide: [USAGE_GUIDE.md](USAGE_GUIDE.md)
+- Interactive background removal debugger: [http://localhost:3000/debug.html](http://localhost:3000/debug.html)

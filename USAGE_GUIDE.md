@@ -1,335 +1,222 @@
-# 📚 Complete User Guide - Edit Video Tool
+# 📖 Complete User Guide - Edit Video Tool
 
-## 🎯 What This Tool Does
-
-The Edit Video Tool automatically creates professional videos from:
-- **Audio** (MP3 narration)
-- **Images** (PNG/JPG scenes)
-- **Script** (Text with SCENE markers)
-
-**Output:** Synchronized video (MP4) with subtitles and effects.
-
-## 🏗️ Architecture Overview
-
-```
-┌────────────────────────────────────────────────────────┐
-│                    Frontend (Web UI)                    │
-│  HTML/CSS/JS - Upload files, monitor progress          │
-└────────────────────┬─────────────────────────────────┘
-                     │ HTTP POST /api/upload
-                     ▼
-┌────────────────────────────────────────────────────────┐
-│              Backend (Node.js + Express)               │
-│ ┌──────────────┬────────────────┬──────────────────┐  │
-│ │  Whisper AI  │ Script Parser  │ Timeline Gen     │  │
-│ │ (timestamps) │  (SCENE parse) │ (match scenes)   │  │
-│ └──────────────┴────────────────┴──────────────────┘  │
-│ ┌──────────────────────────────────────────────────┐  │
-│ │ Subtitle Gen (SRT) + FFmpeg Renderer (MP4)      │  │
-│ └──────────────────────────────────────────────────┘  │
-└────────────────────┬─────────────────────────────────┘
-                     │ File download
-                     ▼
-                  video.mp4
-```
-
-## 📋 Step-by-Step Usage
-
-### Step 1: Prepare Your Files
-
-**Audio (audio.mp3):**
-- Format: MP3
-- Duration: 1-10 minutes recommended
-- Content: Narration matching your script
-- Quality: Clear, consistent volume
-
-**Script (script.txt):**
-```
-SCENE 1
-Text spoken in scene 1
-
-SCENE 2
-Text spoken in scene 2
-
-SCENE 3
-Text spoken in scene 3
-```
-
-**Images:**
-- scene1.png
-- scene2.png
-- scene3.png
-- ... (one per scene)
-- Format: PNG or JPG
-- Resolution: 1920x1080 recommended
-- Size: 300KB-500KB each
-
-### Step 2: Start the Server
-
-```bash
-npm start
-```
-
-Expected output:
-```
-✅ Server running on http://localhost:3000
-```
-
-### Step 3: Upload via Web UI
-
-1. Open http://localhost:3000 in browser
-2. Upload audio.mp3
-3. Upload script.txt
-4. Upload all images (scene1.png, scene2.png, etc.)
-5. Click "Create Video"
-
-### Step 4: Monitor Progress
-
-The UI shows real-time progress:
-- 🎤 Extracting timestamps from audio
-- 📝 Parsing script scenes
-- 🎬 Generating timeline
-- 📋 Creating subtitles
-- 🎥 Rendering final video
-
-### Step 5: Download Video
-
-Once complete:
-- Click "Download Video"
-- Save video.mp4
-
-## 🔧 Configuration
-
-### Environment Variables (.env)
-
-```
-# Required - Get from https://platform.openai.com/api-keys
-OPENAI_API_KEY=sk-your-key-here
-
-# Optional - Server port (default: 3000)
-PORT=3000
-
-# Optional - Path to FFmpeg binary
-FFMPEG_PATH=/usr/bin/ffmpeg
-FFPROBE_PATH=/usr/bin/ffprobe
-```
-
-### Recommended Settings
-
-```env
-OPENAI_API_KEY=sk-proj-xxxxx...
-PORT=3000
-NODE_ENV=production
-```
-
-## 🎬 Example Workflow
-
-### Project: Vietnamese Motivational Video
-
-**Input Files:**
-
-script.txt:
-```
-SCENE 1
-Người thành công không phải là người thông minh nhất
-
-SCENE 2
-Mà là người nỗ lực nhiều nhất
-
-SCENE 3
-Hãy cố gắng mỗi ngày
-```
-
-Audio: (3 sentences recorded as audio.mp3)
-
-Images:
-- scene1.png (success mindset)
-- scene2.png (hard work)
-- scene3.png (daily effort)
-
-**Process:**
-1. Whisper extracts: [0s-4.5s, 4.5s-7.2s, 7.2s-9.8s]
-2. Timeline: [scene1→4.5s, scene2→2.7s, scene3→2.6s]
-3. SRT generated with timestamps
-4. FFmpeg composes video
-
-**Output:**
-- video.mp4 (10 seconds)
-- Synced images with narration
-- Embedded subtitles
-
-## 🐛 Troubleshooting
-
-### Problem: "FFmpeg not found"
-**Solution:**
-```bash
-# Windows - Install via Chocolatey
-choco install ffmpeg
-
-# macOS
-brew install ffmpeg
-
-# Linux
-sudo apt-get install ffmpeg
-
-# Verify
-ffmpeg -version
-```
-
-### Problem: "OPENAI_API_KEY not set"
-**Solution:**
-1. Get API key from https://platform.openai.com/api-keys
-2. Edit .env file
-3. Add: `OPENAI_API_KEY=sk-...`
-4. Restart server
-
-### Problem: "Upload failed - Invalid file"
-**Solution:**
-- Audio must be MP3
-- Script must be TXT
-- Images must be PNG/JPG
-- File sizes: Audio < 25MB, Images < 1MB
-
-### Problem: "Script text doesn't match audio"
-**Solution:**
-- Ensure script text closely matches narration
-- Use short sentences (5-8 words)
-- Check spelling and punctuation
-- Use simple, clear language
-
-### Problem: "Video rendering takes too long"
-**Solution:**
-- Use smaller images (< 500KB)
-- Reduce duration
-- Use lower resolution initially
-- Check system resources
-
-## 📊 Performance & Costs
-
-### API Usage
-- Whisper API: ~$0.01 per minute of audio
-- Example: 5-minute video ≈ $0.05
-
-### Processing Time
-- Audio analysis: 1-2 minutes
-- Image processing: 1 minute per minute of video
-- Rendering: 2-5 minutes
-- Total: 4-10 minutes per video
-
-### System Requirements
-- CPU: Dual-core minimum (4-core recommended)
-- RAM: 4GB minimum (8GB recommended)
-- Storage: 2GB free for uploads + output
-- Network: Stable internet (for Whisper API)
-
-## 🎨 Advanced Usage
-
-### Custom Image Duration
-Modify timelineGenerator.js to adjust:
-```javascript
-// Extend or shrink duration
-timeline.push({
-  duration: (bestMatch.end - bestMatch.start) * 1.2  // 20% longer
-});
-```
-
-### Add Video Effects
-Modify ffmpegRenderer.js to add FFmpeg filters:
-```bash
-ffmpeg ... -vf "fade=in:0:30" ...  # Fade in effect
-```
-
-### Multiple Audio Tracks
-Extend server.js to handle background music:
-```javascript
-form.append('background', backgroundAudio);
-```
-
-## 📱 Browser Compatibility
-
-Tested and working on:
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-## 🔐 Security Notes
-
-1. **API Keys:**
-   - Never commit .env to git
-   - Use environment-specific keys
-   - Rotate keys regularly
-
-2. **File Uploads:**
-   - Validated on backend
-   - Temporary files cleaned up
-   - 25MB limit enforced
-
-3. **Output Files:**
-   - Generated videos stored securely
-   - Accessible only via session ID
-   - Auto-cleaned after download
-
-## 📞 Support & Resources
-
-**Official Docs:**
-- FFmpeg: https://ffmpeg.org/documentation.html
-- Whisper AI: https://github.com/openai/whisper
-- Express.js: https://expressjs.com/
-
-**Troubleshooting:**
-- Check server logs for errors
-- Enable DEBUG mode: `DEBUG=* npm start`
-- Test with simple example files first
-
-## ✅ Quality Checklist
-
-Before creating final videos:
-
-- [ ] Audio is clear, consistent volume
-- [ ] Script text matches audio narration
-- [ ] Images are high quality (1920x1080)
-- [ ] Image filenames match scenes (scene1.png, etc.)
-- [ ] No special characters in filenames
-- [ ] All files are in recommended formats
-- [ ] API key is valid and has credits
-- [ ] FFmpeg is installed and accessible
-
-## 🚀 Going Live
-
-To deploy for production:
-
-1. **Environment:**
-   ```bash
-   NODE_ENV=production npm start
-   ```
-
-2. **SSL/HTTPS:**
-   - Use Nginx/Apache reverse proxy
-   - Install SSL certificate
-   - Configure for HTTPS
-
-3. **Cloud Deployment:**
-   - Use Node.js hosting (Heroku, Render, Railway)
-   - Set environment variables via platform
-   - Upload to cloud storage (S3, etc.)
-
-4. **Monitoring:**
-   - Setup error logging (Sentry, etc.)
-   - Monitor API usage and costs
-   - Track upload/download metrics
-
-## 📝 License & Attribution
-
-This tool uses:
-- OpenAI Whisper (Speech Recognition)
-- FFmpeg (Video Rendering)
-- Express.js (Web Framework)
-
-All open source and free to use.
+This comprehensive handbook explains every feature, architectural data flow, and optimization technique in **Edit Video Tool**.
 
 ---
 
-**Happy video creating! 🎉**
+## 📑 Table of Contents
+1. [Request Lifecycle & Architecture](#1-request-lifecycle--architecture)
+2. [Tab 1: AI Script Assistant & Content Extractor](#2-tab-1-ai-script-assistant--content-extractor)
+3. [Tab 2: AI Voice Generation, Voice Cloning & Local Voice Storage](#3-tab-2-ai-voice-generation-voice-cloning--local-voice-storage)
+4. [Tab 3: Cinematic Video Editing & FFmpeg Rendering](#4-tab-3-cinematic-video-editing--ffmpeg-rendering)
+5. [Tab 4: Automated YouTube Publishing](#5-tab-4-automated-youtube-publishing)
+6. [Visual Background Keying Debugger (`/debug.html`)](#6-visual-background-keying-debugger-debughmtl)
+7. [Pro Tips & Frequently Asked Questions (FAQ)](#7-pro-tips--frequently-asked-questions-faq)
 
-For questions, check the examples folder or README.md file.
+---
+
+## 1. Request Lifecycle & Architecture
+
+The application is architected as a hybrid pipeline combining **Node.js Express**, **Python Subprocesses**, and **FFmpeg Native Media Composition**:
+
+```
+[ BROWSER UI (Client) ]
+   │
+   ├─► 1. Raw Idea / YouTube URL ──────► [ Google Gemini AI ]
+   │                                           │ (Generates SCENE script, Visual prompts, SEO)
+   │                                           ▼
+   ├─► 2. Voiceover Generation ────────► [ POST /api/tts ] ──► [ python/tts_local.py ]
+   │      - Script text                        │                   │
+   │      - Preset voice (Minh Quân...)        │                   ├─► FFmpeg audio normalizer
+   │      - Reference audio (WAV/M4A/MP3)      │                   └─► VieNeu-TTS 48kHz (ONNX)
+   │      - Or saved custom voice ID           ▼                           │
+   │                                  Saved to uploads/cloned_voices/      ▼
+   │                                                                 audio.wav (48kHz)
+   │
+   ├─► 3. Video Rendering Request ─────► [ POST /api/upload-and-create ]
+   │      - audio.wav                          │
+   │      - script.txt                         ├─► Faster-Whisper: Word-level timestamps extraction
+   │      - scenes/*.png                       ├─► Needleman-Wunsch: Dynamic alignment with script
+   │      - background.png                     ├─► Rembg / White-key: Foreground subject isolation
+   │      - bgm.mp3                            ├─► Subtitle Generator: Dynamic subtitle.ass (Karaoke)
+   │                                           └─► FFmpeg Engine: Ken Burns Zoom, Crossfade, Audio Mix
+   │                                                       │
+   │                                                       ▼
+   │                                                 output.mp4 ready
+   ▼
+   4. Video Publishing ────────────────► [ Google OAuth 2.0 ] ──► YouTube Data API v3
+```
+
+---
+
+## 2. Tab 1: AI Script Assistant & Content Extractor
+
+Turn raw ideas or reference YouTube videos into structured production-ready scripts.
+
+### 2.1. YouTube Transcript Extraction
+- Paste any YouTube link (e.g., `https://www.youtube.com/watch?v=...`) into the **YouTube Video Link** input.
+- Click **🔍 Extract Script**.
+- The system extracts the transcript and loads it directly into the script editor.
+
+### 2.2. Automated Scene Breakdown
+- Enter or edit your script in the **Raw Script** area.
+- Click **✨ Generate Scenes With AI**:
+  - **Google Gemini** parses narrative context into scenes formatted as:
+    ```
+    SCENE 1
+    Spoken dialogue or narrative commentary for scene 1.
+
+    SCENE 2
+    Subsequent narrative commentary for scene 2.
+    ```
+  - Under each scene, Gemini produces a **photographer-grade English prompt** specifying artistic style, lighting, composition, and framing.
+- Handy utilities:
+  - **Copy**: Copy prompt for an individual scene to paste into Midjourney, Leonardo AI, or WhiskLab.
+  - **Copy All Prompts**: Copy all prompts at once.
+  - **Download Script (.txt)**: Export a clean, structured script file.
+
+### 2.3. SEO Metadata Generation
+- Click **📋 Generate Title & Description**:
+  - Generates **3 high-CTR titles** designed to maximize click-through rate.
+  - Generates an engaging **video description** with timestamp chapter placeholders.
+  - Produces trending **tags and hashtags** for YouTube and TikTok.
+- Click **⚡ Fill into Video Form** to auto-sync the script to Tabs 2 and 3.
+
+---
+
+## 3. Tab 2: AI Voice Generation, Voice Cloning & Local Voice Storage
+
+Powered by an independent **100% Offline Local TTS Engine**, with no ElevenLabs subscription fees or monthly character quotas.
+
+### 3.1. Available Voice Engines
+
+| Engine | Primary Strength | Language | Runtime |
+|---|---|---|---|
+| **VieNeu-TTS (48kHz)** `[Default]` | Natural intonation, precise Vietnamese accents and diacritics | Vietnamese | 100% Offline ONNX, 23 regional voices + instant cloning |
+| **Kokoro TTS** | Ultra-fast (~3s for long scripts), authentic accent | English / Multi | 100% Offline ONNX, popular voices: `af_heart`, `am_adam` |
+| **Viettel AI** | Standard broadcast Vietnamese voice | Vietnamese | Cloud API fallback |
+
+### 3.2. Selecting from 23 Preset Regional Voices
+In the **🎙️ Select Voice** dropdown, pick the ideal voice profile for your niche:
+- **News, commentary, tech reviews**: *Minh Quân (Northern Male)*, *Mai Anh (Northern Female)*, *Thùy Dung (Southern Female)*, *Minh Đức (Northern Male)*.
+- **Storytelling, podcasts, audiobooks**: *Phạm Tuyên (Deep Warm Male)*, *Quỳnh Anh (Expressive Female)*, *Thái Sơn (Warm Southern Male)*, *Mỹ Duyên (Southern Female)*.
+- **Vlogs, travel, casual**: *Minh Triết*, *Quang Sơn (Central Male)*, *Ngọc Trân (Central Female)*.
+
+### 3.3. Instant Voice Cloning (3–8s) & Persistent Local Storage
+Clone any target voice using a short **3–8 second audio sample**.
+
+#### How to clone & save:
+1. Click the **`🧬 Clone Giọng Mới (Tải audio 3–8s) ▼`** button to reveal the upload zone.
+2. Drag and drop your audio file:
+   - **Supported Formats**: Universal support for `.m4a` (smartphone voice notes), `.mp3`, `.wav`, `.aac`, `.ogg`, and `.webm`.
+   - **File Requirements**: 3 to 8 seconds of clear speech with minimal background noise.
+3. Once the file loads, the save dialog appears:
+   - The voice name is automatically pre-filled from the filename (you can rename it, e.g., *"My Podcast Voice"*).
+   - Click **`💾 Lưu Giọng`**: The system normalizes the audio to standard PCM WAV and saves it permanently in `uploads/cloned_voices/`.
+4. After saving:
+   - The voice instantly appears under **`⭐ Giọng Đã Lưu Của Bạn` (Your Saved Voices)** in the dropdown.
+   - For all future sessions, select your saved voice from the dropdown without uploading reference clips again.
+
+#### Managing & Deleting Saved Voices:
+- Click **`⚙️ Quản lý giọng đã lưu`** (next to the Voice Select label).
+- A management modal displays your saved voice library:
+  - **Select (Chọn)**: Immediately activates this voice for synthesis.
+  - **Delete (🗑️)**: Permanently removes the audio file from your disk.
+
+### 3.4. Preview & Send to Pipeline
+- Click **🎙️ Generate Audio Now**.
+- In the audio preview card, listen to the output, download `.wav`, or click **⚡ Use for Video Creation** to send the audio to Tab 3.
+
+---
+
+## 4. Tab 3: Cinematic Video Editing & FFmpeg Rendering
+
+Combines script, audio, and imagery into a high-production video with animated subtitles and motion effects.
+
+### 4.1. Input Preparation
+1. **Audio File (`audio.mp3` / `audio.wav`)**: Generated from Tab 2 or uploaded externally.
+2. **Script File (`script.txt`)**: Text structured with `SCENE 1`, `SCENE 2` markers.
+3. **Scene Images**:
+   - Files **must** be named sequentially matching the scene index: `scene1.png`, `scene2.png`, `scene3.png`,... (both `.png` and `.jpg` supported).
+   - Recommended resolution: 1920x1080 (horizontal) or 1080x1920 (vertical).
+
+### 4.2. Background Removal & Compositing
+When overlaying foreground character/subject images onto a shared background:
+- Upload a background image in the **Background Image** slot.
+- Choose the appropriate keying mode:
+  - **`whitekey` (Recommended for sketches, doodles, and line art)**:
+    - Uses *Adaptive Color-to-Alpha* to measure background luminance and dissolve white paper backgrounds while keeping delicate pencil and watercolor strokes intact.
+  - **`rembg` (Recommended for real-world photos of people & objects)**:
+    - Uses deep neural segmentation to cleanly extract subjects with edge feathering.
+
+### 4.3. Render Configuration
+- **Aspect Ratio**:
+  - **16:9 (1920x1080)**: Standard horizontal format for YouTube and Facebook videos.
+  - **9:16 (1080x1920)**: Vertical framing for TikTok, YouTube Shorts, and Instagram Reels.
+- **Video Speed**:
+  - Adjust from **0.5x to 2.0x**.
+  - FFmpeg applies `atempo` and PTS scaling to adjust playback speed without pitch distortion or subtitle misalignment.
+- **Background Music (BGM)**:
+  - Upload an audio track (`.mp3`, `.wav`).
+  - Set the BGM volume slider to **15% - 25%** for a balanced audio mix.
+- **Karaoke Subtitle Effect**:
+  - When enabled, words highlight dynamically (gold/orange) in sync with the narration.
+
+### 4.4. Rendering Process
+- Click **🚀 Start Creating Video**.
+- The backend executes 5 synchronized steps:
+  1. *Faster-Whisper extracts word-level timestamps*.
+  2. *Needleman-Wunsch aligns timestamps with the original script*.
+  3. *Background removal and canvas compositing*.
+  4. *ASS dynamic subtitle compilation*.
+  5. *FFmpeg renders Ken Burns zoom motion, crossfade transitions, and exports the final MP4*.
+
+---
+
+## 5. Tab 4: Automated YouTube Publishing
+
+Publish directly to your YouTube channel with pre-populated SEO metadata:
+1. **Connect Account**:
+   - Click **🔗 Connect YouTube**.
+   - Authenticate through the Google OAuth 2.0 dialog and authorize video upload permissions.
+2. **Review SEO Metadata**:
+   - Title, Description, and Tags are pre-filled from Step 1.
+   - Make any final adjustments before uploading.
+3. **Set Privacy Status**:
+   - `Public`: Immediately visible to everyone.
+   - `Unlisted`: Accessible only via direct URL.
+   - `Private`: Visible only to you (ideal for scheduling).
+4. Click **▶️ Upload to YouTube** and watch live upload percentage progress.
+
+---
+
+## 6. Visual Background Keying Debugger (`/debug.html`)
+
+For complex artwork, transparent washes, or off-white paper, open:
+👉 **[http://localhost:3000/debug.html](http://localhost:3000/debug.html)**
+
+- Upload foreground and background sample images.
+- Toggle between `whitekey` and `rembg` algorithms.
+- Drag the **Threshold** slider to observe real-time keying changes.
+- Inspect the Alpha channel to catch fringe artifacts before rendering.
+
+---
+
+## 7. Pro Tips & Frequently Asked Questions (FAQ)
+
+### 💡 Tips for Best Voice Cloning Results:
+- **Optimal Clip Length**: 5 to 7 seconds of steady speech works best.
+- **Acoustic Environment**: Minimal background noise, no loud reverb, no background music.
+- **Device**: Smartphone voice memos work well (the system automatically decodes `.m4a` files).
+
+### 💡 Tips for Perfect Subtitle Synchronization:
+- Keep the wording in `script.txt` identical to what is spoken in the audio.
+- Write out abbreviations or numbers as words (e.g., write *"five hundred"* instead of *"500"* for tighter word-alignment).
+
+### ❓ FAQ:
+1. **How many videos can I generate per day?**
+   - Unlimited. Local TTS and Faster-Whisper run entirely on your local machine with zero API quotas.
+2. **Do I need a dedicated GPU?**
+   - No. Both VieNeu-TTS v3 Turbo and Faster-Whisper are optimized for CPU execution via ONNX Runtime and perform smoothly on modern laptops.
+3. **Where are my saved cloned voices stored?**
+   - In the `uploads/cloned_voices/` directory of your project folder. You can easily back up this folder when moving machines.
