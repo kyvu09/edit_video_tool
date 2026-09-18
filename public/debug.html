@@ -387,6 +387,94 @@
         .nav-back:hover {
             color: var(--primary-color);
         }
+
+        /* Tabs Styling */
+        .tabs-nav {
+            display: flex;
+            gap: 0.75rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-color);
+            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.06);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.35) 100%);
+            border-color: var(--primary-color);
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+        }
+
+        textarea, input[type="text"], input[type="password"], input[type="number"] {
+            width: 100%;
+            background: #161c2d;
+            border: 1px solid var(--card-border);
+            color: var(--text-color);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            outline: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus, input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus {
+            border-color: var(--primary-color);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 110px;
+            line-height: 1.5;
+        }
+
+        .advanced-details {
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .advanced-details summary {
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .advanced-details[open] summary {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .advanced-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -394,11 +482,131 @@
         <a href="/" class="nav-back">← Back to Video Editor</a>
         
         <header>
-            <h1>🖼️ BG Removal Debugger</h1>
-            <p>Test background removal modes & tune thresholds in real time</p>
+            <h1 id="pageTitle">🍌 Gemini Image Generator</h1>
+            <p id="pageDesc">Debug tạo hình ảnh bằng Gemini Banana 2 Lite (gemini-3.1-flash-lite-image)</p>
         </header>
 
-        <div class="main-grid">
+        <!-- Navigation Tabs -->
+        <div class="tabs-nav">
+            <button type="button" class="tab-btn active" id="tabBtnGemini" onclick="switchTab('gemini')">
+                🍌 Gemini Banana 2 Lite Image
+            </button>
+            <button type="button" class="tab-btn" id="tabBtnBg" onclick="switchTab('bg')">
+                🖼️ Background Removal Debugger
+            </button>
+        </div>
+
+        <!-- Gemini Image Generator Section -->
+        <div id="geminiSection" class="main-grid">
+            <!-- Left Config Panel -->
+            <div class="panel">
+                <h2>🍌 Gemini Banana 2 Lite Prompt</h2>
+                
+                <form id="geminiForm">
+                    <div class="form-group">
+                        <label for="geminiPrompt">Prompt miêu tả hình ảnh <span style="color: #ef4444;">*</span></label>
+                        <textarea id="geminiPrompt" rows="5" placeholder="Nhập prompt miêu tả hình ảnh cần tạo... Ví dụ: Một chú người que stickman đang chạy nhảy vui vẻ trên bãi cỏ dưới bầu trời xanh, nét vẽ đơn giản hoạt hình trên nền trắng sạch sẽ..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="geminiModelSelect">Model</label>
+                        <select id="geminiModelSelect">
+                            <option value="models/gemini-3.1-flash-lite-image" selected>models/gemini-3.1-flash-lite-image (Banana 2 Lite)</option>
+                            <option value="gemini-2.5-flash-image">gemini-2.5-flash-image</option>
+                            <option value="imagen-3.0-generate-002">imagen-3.0-generate-002</option>
+                            <option value="custom">Custom Model (Nhập tên)...</option>
+                        </select>
+                        <input type="text" id="geminiCustomModel" placeholder="Nhập tên model (ví dụ: models/gemini-3.1-flash-lite-image)..." style="display: none; margin-top: 0.5rem;" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="geminiApiKey">Gemini API Key (Tùy chọn - mặc định lấy từ .env)</label>
+                        <input type="password" id="geminiApiKey" placeholder="Để trống để dùng GEMINI_API_KEY trong file .env" autocomplete="off">
+                    </div>
+
+                    <details class="advanced-details">
+                        <summary>⚙️ Thông số nâng cao (Temperature, Top-P, Max Tokens, API Method)</summary>
+                        <div class="advanced-content" style="margin-top: 0.75rem;">
+                            <div class="slider-container">
+                                <div class="slider-header">
+                                    <label for="geminiTemp">Temperature</label>
+                                    <span class="slider-val" id="geminiTempVal">1.0</span>
+                                </div>
+                                <input type="range" id="geminiTemp" min="0" max="2" step="0.05" value="1.0">
+                            </div>
+
+                            <div class="slider-container">
+                                <div class="slider-header">
+                                    <label for="geminiTopP">Top-P</label>
+                                    <span class="slider-val" id="geminiTopPVal">0.95</span>
+                                </div>
+                                <input type="range" id="geminiTopP" min="0" max="1" step="0.05" value="0.95">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="geminiMaxTokens">Max Output Tokens</label>
+                                <input type="number" id="geminiMaxTokens" value="65536">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="geminiApiMode">API Method</label>
+                                <select id="geminiApiMode">
+                                    <option value="interactions" selected>Interactions API (giống code Java mẫu)</option>
+                                    <option value="generateContent">GenerateContent API</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+
+                    <button type="submit" class="btn-submit" id="btnGeminiSubmit">🚀 Tạo hình ảnh (Generate)</button>
+                </form>
+            </div>
+
+            <!-- Right Output Panel -->
+            <div class="panel result-panel">
+                <div class="placeholder-text" id="geminiPlaceholder">
+                    <span class="placeholder-icon">🍌</span>
+                    <p>Nhập prompt và bấm <strong>Tạo hình ảnh</strong> để sinh ảnh bằng Gemini Banana 2 Lite</p>
+                </div>
+
+                <div class="loader" id="geminiLoader"></div>
+                <p id="geminiLoaderText" style="display: none; color: var(--text-muted); font-weight: 550; text-align: center;">
+                    Đang gọi Gemini Banana 2 Lite... Vui lòng đợi trong giây lát!
+                </p>
+
+                <div class="compare-container" id="geminiOutputContainer" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <h2>✨ Output Image</h2>
+                        <span id="geminiModelBadge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                            gemini-3.1-flash-lite-image
+                        </span>
+                    </div>
+
+                    <div class="image-wrapper" style="aspect-ratio: auto; min-height: 280px; max-height: 520px; width: 100%;">
+                        <img id="geminiResultImg" src="" alt="Gemini Output" style="max-height: 500px;">
+                    </div>
+
+                    <div id="geminiTextWrapper" style="display: none; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.8rem 1rem; width: 100%;">
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.3rem;">💬 Model text:</div>
+                        <p id="geminiTextResult" style="font-size: 0.9rem; color: var(--text-color); white-space: pre-wrap;"></p>
+                    </div>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; width: 100%; margin-top: 0.5rem;">
+                        <a id="btnDownloadGemini" href="#" download="gemini_banana_output.png" class="btn-download">
+                            💾 Tải ảnh về (PNG)
+                        </a>
+                        <button type="button" id="btnSendToBgRemoval" class="btn-download" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+                            👉 Tách nền ảnh này
+                        </button>
+                    </div>
+                </div>
+
+                <div class="error-message" id="geminiErrorBox"></div>
+            </div>
+        </div>
+
+        <!-- BG Removal Section -->
+        <div id="bgSection" class="main-grid" style="display: none;">
             <!-- Left Config Panel -->
             <div class="panel">
                 <h2>⚙️ Configuration</h2>
@@ -623,6 +831,193 @@
                 btnProcess.disabled = false;
                 btnProcess.textContent = "Process Background Removal";
             }
+        });
+
+        // ─── TAB SWITCHING LOGIC ───────────────────────────────────────
+        const tabBtnGemini = document.getElementById('tabBtnGemini');
+        const tabBtnBg = document.getElementById('tabBtnBg');
+        const geminiSection = document.getElementById('geminiSection');
+        const bgSection = document.getElementById('bgSection');
+        const pageTitle = document.getElementById('pageTitle');
+        const pageDesc = document.getElementById('pageDesc');
+
+        function switchTab(tab) {
+            if (tab === 'gemini') {
+                tabBtnGemini.classList.add('active');
+                tabBtnBg.classList.remove('active');
+                geminiSection.style.display = 'grid';
+                bgSection.style.display = 'none';
+                pageTitle.innerHTML = '🍌 Gemini Image Generator';
+                pageDesc.textContent = 'Debug tạo hình ảnh bằng Gemini Banana 2 Lite (gemini-3.1-flash-lite-image)';
+            } else {
+                tabBtnGemini.classList.remove('active');
+                tabBtnBg.classList.add('active');
+                geminiSection.style.display = 'none';
+                bgSection.style.display = 'grid';
+                pageTitle.innerHTML = '🖼️ BG Removal Debugger';
+                pageDesc.textContent = 'Test background removal modes & tune thresholds in real time';
+            }
+        }
+
+        // ─── GEMINI BANANA 2 LITE LOGIC ────────────────────────────────
+        const geminiForm = document.getElementById('geminiForm');
+        const geminiPrompt = document.getElementById('geminiPrompt');
+        const geminiModelSelect = document.getElementById('geminiModelSelect');
+        const geminiCustomModel = document.getElementById('geminiCustomModel');
+        const geminiApiKey = document.getElementById('geminiApiKey');
+        const geminiTemp = document.getElementById('geminiTemp');
+        const geminiTempVal = document.getElementById('geminiTempVal');
+        const geminiTopP = document.getElementById('geminiTopP');
+        const geminiTopPVal = document.getElementById('geminiTopPVal');
+        const geminiMaxTokens = document.getElementById('geminiMaxTokens');
+        const geminiApiMode = document.getElementById('geminiApiMode');
+        const btnGeminiSubmit = document.getElementById('btnGeminiSubmit');
+
+        const geminiPlaceholder = document.getElementById('geminiPlaceholder');
+        const geminiLoader = document.getElementById('geminiLoader');
+        const geminiLoaderText = document.getElementById('geminiLoaderText');
+        const geminiOutputContainer = document.getElementById('geminiOutputContainer');
+        const geminiResultImg = document.getElementById('geminiResultImg');
+        const geminiModelBadge = document.getElementById('geminiModelBadge');
+        const geminiTextWrapper = document.getElementById('geminiTextWrapper');
+        const geminiTextResult = document.getElementById('geminiTextResult');
+        const btnDownloadGemini = document.getElementById('btnDownloadGemini');
+        const btnSendToBgRemoval = document.getElementById('btnSendToBgRemoval');
+        const geminiErrorBox = document.getElementById('geminiErrorBox');
+
+        let lastGeneratedBlob = null;
+
+        // Model selector change
+        geminiModelSelect.addEventListener('change', () => {
+            if (geminiModelSelect.value === 'custom') {
+                geminiCustomModel.style.display = 'block';
+                geminiCustomModel.focus();
+            } else {
+                geminiCustomModel.style.display = 'none';
+            }
+        });
+
+        // Sliders
+        geminiTemp.addEventListener('input', () => {
+            geminiTempVal.textContent = geminiTemp.value;
+        });
+        geminiTopP.addEventListener('input', () => {
+            geminiTopPVal.textContent = geminiTopP.value;
+        });
+
+        // Gemini form submit
+        geminiForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const promptText = geminiPrompt.value.trim();
+            if (!promptText) {
+                alert('Vui lòng nhập prompt.');
+                return;
+            }
+
+            let selectedModel = geminiModelSelect.value;
+            if (selectedModel === 'custom') {
+                selectedModel = geminiCustomModel.value.trim();
+                if (!selectedModel) {
+                    alert('Vui lòng nhập tên custom model.');
+                    return;
+                }
+            }
+
+            // Loading state
+            geminiPlaceholder.style.display = 'none';
+            geminiOutputContainer.style.display = 'none';
+            geminiErrorBox.style.display = 'none';
+            geminiLoader.style.display = 'block';
+            geminiLoaderText.style.display = 'block';
+            btnGeminiSubmit.disabled = true;
+            btnGeminiSubmit.textContent = 'Đang tạo ảnh...';
+
+            const payload = {
+                prompt: promptText,
+                model: selectedModel,
+                apiKey: geminiApiKey.value.trim() || undefined,
+                temperature: parseFloat(geminiTemp.value),
+                topP: parseFloat(geminiTopP.value),
+                maxOutputTokens: parseInt(geminiMaxTokens.value, 10) || 65536,
+                apiMode: geminiApiMode.value
+            };
+
+            try {
+                const res = await fetch('/api/debug-generate-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Tạo ảnh thất bại');
+                }
+
+                // Render output image
+                geminiResultImg.src = data.imageUrl;
+                btnDownloadGemini.href = data.imageUrl;
+                geminiModelBadge.textContent = data.model || selectedModel;
+
+                // Handle text output if any
+                if (data.text && data.text.trim()) {
+                    geminiTextResult.textContent = data.text.trim();
+                    geminiTextWrapper.style.display = 'block';
+                } else {
+                    geminiTextWrapper.style.display = 'none';
+                }
+
+                // Store blob for "Send to BG Removal"
+                try {
+                    const fetchBlob = await fetch(data.imageUrl);
+                    lastGeneratedBlob = await fetchBlob.blob();
+                } catch(e) {
+                    console.warn('Could not cache blob for BG removal', e);
+                }
+
+                // Toggle visibility
+                geminiLoader.style.display = 'none';
+                geminiLoaderText.style.display = 'none';
+                geminiOutputContainer.style.display = 'flex';
+
+            } catch (err) {
+                console.error('Gemini image generation error:', err);
+                geminiLoader.style.display = 'none';
+                geminiLoaderText.style.display = 'none';
+                geminiErrorBox.innerHTML = `<strong>⚠️ Lỗi:</strong> ${err.message}`;
+                geminiErrorBox.style.display = 'block';
+                geminiPlaceholder.style.display = 'flex';
+            } finally {
+                btnGeminiSubmit.disabled = false;
+                btnGeminiSubmit.textContent = '🚀 Tạo hình ảnh (Generate)';
+            }
+        });
+
+        // Send generated image to BG Removal tool
+        btnSendToBgRemoval.addEventListener('click', () => {
+            if (!lastGeneratedBlob) {
+                alert('Chưa có ảnh được tạo.');
+                return;
+            }
+
+            const fileName = `gemini_banana_${Date.now()}.png`;
+            const file = new File([lastGeneratedBlob], fileName, { type: 'image/png' });
+
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fgInput.files = dataTransfer.files;
+
+            // Trigger change event so preview and text update
+            const event = new Event('change', { bubbles: true });
+            fgInput.dispatchEvent(event);
+
+            // Switch to BG removal tab
+            switchTab('bg');
+
+            // Scroll into view
+            fgPreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
     </script>
 </body>

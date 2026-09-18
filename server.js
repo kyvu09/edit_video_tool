@@ -686,6 +686,142 @@ app.post('/api/debug-bg-remove', upload.any(), async (req, res) => {
   }
 });
 
+// Standalone endpoint for Gemini Image Generation debugging (Banana 2 Lite / models/gemini-3.1-flash-lite-image)
+app.post('/api/debug-generate-image', async (req, res) => {
+  try {
+    const { prompt, model, apiKey, temperature, maxOutputTokens, topP, apiMode } = req.body;
+
+    if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
+      return res.status(400).json({ error: 'Prompt không được để trống' });
+    }
+
+    const effectiveApiKey = (apiKey && apiKey.trim()) || process.env.GEMINI_API_KEY;
+    if (!effectiveApiKey || effectiveApiKey.trim() === '') {
+      return res.status(400).json({
+        error: 'GEMINI_API_KEY chưa được cấu hình. Vui lòng nhập API Key trên form hoặc trong file .env.'
+      });
+    }
+
+    const rawModel = (model && model.trim()) || 'models/gemini-3.1-flash-lite-image';
+    const effectiveModel = rawModel.startsWith('models/') ? rawModel : `models/${rawModel}`;
+    const temp = temperature !== undefined && temperature !== null && temperature !== '' ? parseFloat(temperature) : 1.0;
+    const maxTokens = maxOutputTokens ? parseInt(maxOutputTokens, 10) : 65536;
+    const p = topP !== undefined && topP !== null && topP !== '' ? parseFloat(topP) : 0.95;
+    const mode = apiMode || 'interactions';
+
+    console.log(`[HTTP Debug Image] Generating image using ${mode} API with model: ${effectiveModel}`);
+    console.log(`[HTTP Debug Image] Prompt: ${prompt.trim().slice(0, 100)}...`);
+
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
+
+    let base64Data = null;
+    let mimeType = 'image/png';
+    let textResponse = '';
+
+    if (mode === 'generateContent') {
+      const response = await ai.models.generateContent({
+        model: rawModel.replace(/^models\//, ''),
+        contents: [{ role: 'user', parts: [{ text: prompt.trim() }] }],
+        config: {
+          responseModalities: ['IMAGE', 'TEXT'],
+          temperature: temp,
+          topP: p
+        }
+      });
+
+      const candidates = response.candidates || [];
+      const parts = (candidates[0] && candidates[0].content && candidates[0].content.parts) || [];
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          base64Data = part.inlineData.data;
+          mimeType = part.inlineData.mimeType || mimeType;
+        } else if (part.text) {
+          textResponse += (textResponse ? '\n' : '') + part.text;
+        }
+      }
+    } else {
+      // Default: Interactions API (matching user's Java code with Client & interactions.create)
+      const interaction = await ai.interactions.create({
+        model: effectiveModel,
+        input: prompt.trim(),
+        generation_config: {
+          temperature: temp,
+          max_output_tokens: maxTokens,
+          top_p: p
+        },
+        response_modalities: ['image', 'text']
+      });
+
+      // Parse interaction steps (matching Java step.asModelOutput().content())
+      if (interaction && Array.isArray(interaction.steps)) {
+        for (const step of interaction.steps) {
+          if (step.type === 'model_output' && Array.isArray(step.content)) {
+            for (const item of step.content) {
+              if (item.type === 'text' && item.text) {
+                textResponse += (textResponse ? '\n' : '') + item.text;
+              }
+              if (item.type === 'image' && item.data) {
+                base64Data = item.data;
+                mimeType = item.mime_type || mimeType;
+              }
+            }
+          }
+        }
+      }
+
+      // Check SDK helper output_image / output_text properties
+      if (!base64Data && interaction && interaction.output_image && interaction.output_image.data) {
+        base64Data = interaction.output_image.data;
+        mimeType = interaction.output_image.mime_type || mimeType;
+      }
+      if (!textResponse && interaction && interaction.output_text) {
+        textResponse = interaction.output_text;
+      }
+    }
+
+    if (!base64Data) {
+      return res.status(500).json({
+        error: 'Model không trả về dữ liệu hình ảnh (chỉ trả về text hoặc rỗng).',
+        textResponse
+      });
+    }
+
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+
+    return res.json({
+      success: true,
+      imageUrl: dataUrl,
+      rawBase64: base64Data,
+      mimeType,
+      text: textResponse,
+      model: effectiveModel
+    });
+
+  } catch (err) {
+    console.error('[HTTP Debug Image] Error:', err);
+    let status = err.status || err.statusCode || 500;
+    let errMsg = err.message || 'Lỗi khi gọi API Gemini';
+
+    if (status === 429 && (errMsg.includes('limit: 0') || errMsg.includes('RESOURCE_EXHAUSTED'))) {
+      errMsg = 'Quota hết hoặc dự án chưa bật billing: Model image generation yêu cầu Google Cloud Project bật Billing (Tier trả phí). Xem: https://console.cloud.google.com/billing';
+    } else if (status === 429) {
+      errMsg = 'Gọi API quá nhanh (Rate limit 429). Vui lòng thử lại sau giây lát.';
+    } else if (status === 404) {
+      errMsg = 'Model không tồn tại hoặc chưa được hỗ trợ trên API key này (404).';
+    } else if (status === 403) {
+      errMsg = 'API Key không có quyền truy cập model này (403 Forbidden).';
+    }
+
+    return res.status(status).json({
+      error: errMsg,
+      originalError: err.message,
+      details: err.error || null
+    });
+  }
+});
+
+
 app.get('/api/progress/:sessionId', (req, res) => {
   const { sessionId } = req.params;
   const session = sessions[sessionId];
