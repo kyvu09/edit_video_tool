@@ -11,6 +11,7 @@
     <!-- ZIP download support -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
     <div class="app-layout">
@@ -26,13 +27,14 @@
                         <p>developer: kyvu</p>
                     </div>
                 </div>
-                <a href="/debug.html" class="link-debugger">Tách Nền Debugger</a>
+                <a href="./debug.html" class="link-debugger"><i data-lucide="bug" class="link-icon"></i> Tách Nền Debugger</a>
             </div>
 
             <nav class="sidebar-menu">
                 <p class="menu-label">Các bước thực hiện</p>
 
-                <button class="tab-btn active" data-tab="script-assistant-tab">                    
+                <button class="tab-btn active" data-tab="script-assistant-tab">
+                    <div class="tab-btn-icon"><i data-lucide="scroll-text"></i></div>
                     <div class="tab-btn-text">
                         <span class="tab-btn-title">Kịch Bản</span>
                         <span class="tab-btn-desc">Phân cảnh & viết prompt AI</span>
@@ -41,6 +43,7 @@
                 </button>
 
                 <button class="tab-btn" data-tab="audio-gen-tab">
+                    <div class="tab-btn-icon"><i data-lucide="mic"></i></div>
                     <div class="tab-btn-text">
                         <span class="tab-btn-title">Tạo Audio AI</span>
                         <span class="tab-btn-desc">Text-to-speech chất lượng cao</span>
@@ -49,6 +52,7 @@
                 </button>
 
                 <button class="tab-btn" data-tab="create-video-tab">
+                    <div class="tab-btn-icon"><i data-lucide="film"></i></div>
                     <div class="tab-btn-text">
                         <span class="tab-btn-title">Render Video</span>
                         <span class="tab-btn-desc">Tổng hợp & xuất video cuối</span>
@@ -90,7 +94,7 @@
 
                     <!-- Page Header -->
                     <div class="page-header">
-                        <div class="page-header-icon violet">✍️</div>
+                        <div class="page-header-icon violet"><i data-lucide="pen-tool"></i></div>
                         <div class="page-header-body">
                             <h2>Kịch Bản AI</h2>
                             <p>Dán kịch bản thô, AI sẽ tự động phân chia thành từng scene và viết prompt hình ảnh. Có thể trích xuất nội dung từ video YouTube.</p>
@@ -102,7 +106,7 @@
                         <!-- Extract from YouTube -->
                         <div class="section-card">
                             <div class="section-card-header violet">
-                                <span class="section-card-header-icon">🔗</span>
+                                <span class="section-card-header-icon"><i data-lucide="link"></i></span>
                                 <span class="section-card-header-title">Trích Xuất Từ YouTube</span>
                             </div>
                             <div class="section-card-body">
@@ -112,7 +116,7 @@
                                         style="flex: 1; padding: 11px 14px; margin-top: 0;"
                                         placeholder="https://www.youtube.com/watch?v=...">
                                     <button id="btnExtractVideo" type="button" class="btn-secondary-action" style="white-space: nowrap; padding: 11px 20px; margin: 0;">
-                                        🔍 Trích xuất
+                                        <i data-lucide="search" class="btn-icon"></i> Trích xuất
                                     </button>
                                 </div>
                             </div>
@@ -121,7 +125,7 @@
                         <!-- Raw Script Input -->
                         <div class="section-card">
                             <div class="section-card-header indigo">
-                                <span class="section-card-header-icon">📝</span>
+                                <span class="section-card-header-icon"><i data-lucide="file-text"></i></span>
                                 <span class="section-card-header-title">Kịch Bản Thô</span>
                             </div>
                             <div class="section-card-body">
@@ -131,13 +135,13 @@
                                     rows="6" class="custom-textarea" style="margin-top: 8px;"></textarea>
                                 <div style="display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap;">
                                     <button id="btnCreateContent" type="button" class="btn-submit" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #059669, #10b981);">
-                                        ✍️ Viết Lại Content Mới
+                                        <i data-lucide="pen-line" class="btn-icon"></i> Viết Lại Content Mới
                                     </button>
                                     <button id="btnGenerateScenes" type="button" class="btn-submit" style="flex: 1; min-width: 180px;">
-                                        ✨ Tạo Phân Cảnh Bằng AI
+                                        <i data-lucide="sparkles" class="btn-icon"></i> Tạo Phân Cảnh Bằng AI
                                     </button>
                                     <button id="btnGenerateMetadata" type="button" class="btn-submit" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
-                                        📋 Viết Tiêu Đề & Mô Tả
+                                        <i data-lucide="clipboard-list" class="btn-icon"></i> Viết Tiêu Đề & Mô Tả
                                     </button>
                                 </div>
                             </div>
@@ -163,24 +167,24 @@
                         <div id="aiCreateContentResults" class="ai-results" style="display: none;">
                             <div class="section-card">
                                 <div class="section-card-header emerald">
-                                    <span class="section-card-header-icon">✍️</span>
+                                    <span class="section-card-header-icon"><i data-lucide="pen-line"></i></span>
                                     <span class="section-card-header-title">Kịch Bản Mới Đã Viết Lại</span>
                                 </div>
                                 <div class="section-card-body">
                                     <p class="upload-hint">Kịch bản đã được AI biên soạn lại thành lời kể tiếng Việt liền mạch, hấp dẫn.</p>
                                     <div class="textarea-container" style="margin-top: 8px;">
                                         <textarea id="aiCreatedContentOutput" rows="8" class="custom-textarea" style="padding-right: 90px; font-family: inherit; font-size: 0.95rem; line-height: 1.6;"></textarea>
-                                        <button id="btnCopyCreatedContent" type="button" class="btn-copy">📋 Sao chép</button>
+                                        <button id="btnCopyCreatedContent" type="button" class="btn-copy"><i data-lucide="copy" class="btn-icon"></i> Sao chép</button>
                                     </div>
                                     <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
                                         <button id="btnUseAsRawScript" type="button" class="btn-secondary-action" style="flex: 1; min-width: 180px;">
-                                            🔄 Dán vào Kịch Bản Thô
+                                            <i data-lucide="arrow-left" class="btn-icon"></i> Dán vào Kịch Bản Thô
                                         </button>
                                         <button id="btnApplyCreatedContent" type="button" class="btn-secondary-action" style="flex: 1; min-width: 180px;">
-                                            ⚡ Điền vào Form Tạo Video
+                                            <i data-lucide="zap" class="btn-icon"></i> Điền vào Form Tạo Video
                                         </button>
                                         <button id="btnDownloadCreatedContent" type="button" class="btn-secondary-action" style="flex: 1; min-width: 130px;">
-                                            ⬇️ Tải file .txt
+                                            <i data-lucide="download" class="btn-icon"></i> Tải file .txt
                                         </button>
                                     </div>
                                 </div>
@@ -191,7 +195,7 @@
                         <div id="aiMetadataResults" class="ai-results" style="display: none;">
                             <div class="section-card">
                                 <div class="section-card-header amber">
-                                    <span class="section-card-header-icon">📣</span>
+                                    <span class="section-card-header-icon"><i data-lucide="megaphone"></i></span>
                                     <span class="section-card-header-title">Video Metadata (YouTube / TikTok)</span>
                                 </div>
                                 <div class="section-card-body">
@@ -199,14 +203,14 @@
                                         <p class="field-label-text">Tiêu đề</p>
                                         <div class="textarea-container">
                                             <input type="text" id="aiMetadataTitle" readonly class="custom-textarea readonly-textarea" style="margin-top: 0; padding-right: 90px;">
-                                            <button id="btnCopyTitle" type="button" class="btn-copy">📋 Sao chép</button>
+                                            <button id="btnCopyTitle" type="button" class="btn-copy"><i data-lucide="copy" class="btn-icon"></i> Sao chép</button>
                                         </div>
                                     </div>
                                     <div>
                                         <p class="field-label-text">Mô tả & Hashtags</p>
                                         <div class="textarea-container">
                                             <textarea id="aiMetadataDesc" readonly rows="5" class="custom-textarea readonly-textarea" style="margin-top: 0; padding-right: 90px;"></textarea>
-                                            <button id="btnCopyDesc" type="button" class="btn-copy">📋 Sao chép</button>
+                                            <button id="btnCopyDesc" type="button" class="btn-copy"><i data-lucide="copy" class="btn-icon"></i> Sao chép</button>
                                         </div>
                                     </div>
                                 </div>
@@ -217,14 +221,14 @@
                         <div id="aiResults" class="ai-results" style="display: none;">
                             <div class="section-card" style="margin-top: 4px;">
                                 <div class="section-card-header violet">
-                                    <span class="section-card-header-icon">🖼️</span>
+                                    <span class="section-card-header-icon"><i data-lucide="layout-grid"></i></span>
                                     <span class="section-card-header-title">Phân Cảnh & Prompt Hình Ảnh</span>
                                 </div>
                                 <div class="section-card-body">
                                     <p class="upload-hint">Sao chép danh sách này để tự vẽ các ảnh bằng AI (WhiskLab, Midjourney...)</p>
                                     <div class="textarea-container" style="margin-top: 8px;">
                                         <textarea id="aiScenesOutput" readonly rows="8" class="custom-textarea readonly-textarea" style="padding-right: 90px;"></textarea>
-                                        <button id="btnCopyScenes" type="button" class="btn-copy">📋 Sao chép</button>
+                                        <button id="btnCopyScenes" type="button" class="btn-copy"><i data-lucide="copy" class="btn-icon"></i> Sao chép</button>
                                     </div>
                                     <!-- Individual copy buttons -->
                                     <div id="individualCopyButtonsContainer" style="margin-top: 12px; display: none;">
@@ -241,21 +245,21 @@
 
                             <div class="section-card" style="margin-top: 4px;">
                                 <div class="section-card-header emerald">
-                                    <span class="section-card-header-icon">📄</span>
+                                    <span class="section-card-header-icon"><i data-lucide="file-check"></i></span>
                                     <span class="section-card-header-title">Kịch Bản Đã Tách Phân Cảnh</span>
                                 </div>
                                 <div class="section-card-body">
                                     <p class="upload-hint">Lời thoại của video sau khi đã phân chia chuẩn. Dùng để tạo video.</p>
                                     <div class="textarea-container" style="margin-top: 8px;">
                                         <textarea id="aiScriptOutput" readonly rows="6" class="custom-textarea readonly-textarea" style="padding-right: 90px;"></textarea>
-                                        <button id="btnCopyScript" type="button" class="btn-copy">📋 Sao chép</button>
+                                        <button id="btnCopyScript" type="button" class="btn-copy"><i data-lucide="copy" class="btn-icon"></i> Sao chép</button>
                                     </div>
                                     <div style="display: flex; gap: 10px; margin-top: 8px;">
                                         <button id="btnApplyScript" type="button" class="btn-secondary-action" style="flex: 1;">
-                                            ⚡ Điền vào Form Tạo Video
+                                            <i data-lucide="zap" class="btn-icon"></i> Điền vào Form Tạo Video
                                         </button>
                                         <button id="btnDownloadScriptText" type="button" class="btn-secondary-action" style="flex: 1;">
-                                            ⬇️ Tải file .txt
+                                            <i data-lucide="download" class="btn-icon"></i> Tải file .txt
                                         </button>
                                     </div>
                                 </div>
@@ -270,7 +274,7 @@
 
                     <!-- Page Header -->
                     <div class="page-header">
-                        <div class="page-header-icon amber">🎙️</div>
+                        <div class="page-header-icon amber"><i data-lucide="mic"></i></div>
                         <div class="page-header-body">
                             <h2>Tạo Audio AI</h2>
                             <p>Chuyển kịch bản thành giọng nói tự nhiên bằng Viettel AI hoặc ElevenLabs. Sau khi tạo xong, áp dụng trực tiếp vào video.</p>
@@ -282,12 +286,12 @@
                         <!-- Script Input -->
                         <div class="section-card">
                             <div class="section-card-header amber">
-                                <span class="section-card-header-icon">📝</span>
+                                <span class="section-card-header-icon"><i data-lucide="file-text"></i></span>
                                 <span class="section-card-header-title">Kịch Bản Cần Đọc</span>
                             </div>
                             <div class="section-card-body">
                                 <button id="btnFetchFromAI" type="button" class="btn-secondary-action" style="align-self: flex-start;">
-                                    ⟵ Lấy từ Trợ Lý Kịch Bản
+                                    <i data-lucide="arrow-left" class="btn-icon"></i> Lấy từ Trợ Lý Kịch Bản
                                 </button>
                                 <textarea id="ttsInput" rows="10" class="custom-textarea"
                                     placeholder="Dán hoặc gõ kịch bản bạn muốn đọc vào đây..." style="margin-top: 4px;"></textarea>
@@ -297,7 +301,7 @@
                         <!-- Provider Selection -->
                         <div class="section-card">
                             <div class="section-card-header indigo">
-                                <span class="section-card-header-icon">🔌</span>
+                                <span class="section-card-header-icon"><i data-lucide="plug"></i></span>
                                 <span class="section-card-header-title">Nhà Cung Cấp Giọng Nói</span>
                             </div>
                             <div class="section-card-body">
@@ -311,7 +315,7 @@
                                 <div class="provider-cards">
                                     <div class="provider-card selected" data-provider="local" onclick="selectProvider('local')">
                                         <div class="provider-card-radio"></div>
-                                        <div class="provider-card-icon">💻</div>
+                                        <div class="provider-card-icon"><i data-lucide="monitor"></i></div>
                                         <div class="provider-card-info">
                                             <div class="provider-card-name">Local TTS (VieNeu)</div>
                                             <div class="provider-card-desc">Giọng Minh Quân — Chuẩn Tiếng Việt 48kHz (Offline 100%)</div>
@@ -320,7 +324,7 @@
                                     </div>
                                     <div class="provider-card" data-provider="viettel" onclick="selectProvider('viettel')">
                                         <div class="provider-card-radio"></div>
-                                        <div class="provider-card-icon">🇻🇳</div>
+                                        <div class="provider-card-icon"><i data-lucide="globe"></i></div>
                                         <div class="provider-card-info">
                                             <div class="provider-card-name">Viettel AI</div>
                                             <div class="provider-card-desc">Giọng Quỳnh Anh — Tiếng Việt tự nhiên</div>
@@ -329,7 +333,7 @@
                                     </div>
                                     <div class="provider-card" data-provider="kokoro" onclick="selectProvider('kokoro')">
                                         <div class="provider-card-radio"></div>
-                                        <div class="provider-card-icon">🌐</div>
+                                        <div class="provider-card-icon"><i data-lucide="languages"></i></div>
                                         <div class="provider-card-info">
                                             <div class="provider-card-name">Kokoro TTS</div>
                                             <div class="provider-card-desc">Chuyên Tiếng Anh & Đa ngữ — Siêu nhanh (Offline 100%)</div>
@@ -343,7 +347,7 @@
                         <!-- Voice Selection & Voice Cloning (For VieNeu & Kokoro) -->
                         <div id="ttsVoiceOptionsContainer" class="section-card">
                             <div class="section-card-header indigo">
-                                <span class="section-card-header-icon">🎭</span>
+                                <span class="section-card-header-icon"><i data-lucide="audio-lines"></i></span>
                                 <span class="section-card-header-title">Chọn Giọng Hoặc Clone Giọng</span>
                             </div>
                             <div class="section-card-body" style="display: flex; flex-direction: column; gap: 14px;">
@@ -351,10 +355,10 @@
                                 <div id="presetVoiceWrapper">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                         <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0;">
-                                            🎙️ Chọn Giọng Đọc:
+                                            <i data-lucide="mic" class="btn-icon"></i> Chọn Giọng Đọc:
                                         </label>
                                         <button type="button" id="btnManageCustomVoices" style="background: none; border: none; color: #818cf8; font-size: 12px; cursor: pointer; text-decoration: underline;">
-                                            ⚙️ Quản lý giọng đã lưu (<span id="savedVoicesCountBadge">0</span>)
+                                            <i data-lucide="settings" class="btn-icon"></i> Quản lý giọng đã lưu (<span id="savedVoicesCountBadge">0</span>)
                                         </button>
                                     </div>
                                     <select id="ttsVoiceSelect" class="custom-select-voice">
@@ -389,7 +393,7 @@
                                     <!-- Panel Quản lý giọng đã lưu -->
                                     <div id="customVoicesManagerModal" style="display: none; margin-top: 10px; padding: 12px; background: rgba(30, 41, 59, 0.7); border: 1px solid var(--border-default); border-radius: 8px;">
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <span style="font-size: 12.5px; font-weight: 700; color: #cbd5e1;">📁 Các Giọng Clone Bạn Đã Lưu Trên Máy</span>
+                                            <span style="font-size: 12.5px; font-weight: 700; color: #cbd5e1;"><i data-lucide="folder" class="btn-icon"></i> Các Giọng Clone Bạn Đã Lưu Trên Máy</span>
                                             <button type="button" id="btnCloseCustomVoicesManager" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px;">✕</button>
                                         </div>
                                         <div id="customVoicesListContainer" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
@@ -401,7 +405,7 @@
                                 <!-- Nút Clone Voice để người dùng bấm vào mới mở khung upload audio -->
                                 <div id="cloneVoiceActionRow" style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
                                     <button type="button" id="btnToggleVoiceClone" class="btn-toggle-clone">
-                                        <span id="cloneToggleBtnText">🧬 Clone Giọng Mới (Tải audio 3–8s)</span>
+                                        <span id="cloneToggleBtnText"><i data-lucide="dna" class="btn-icon"></i> Clone Giọng Mới (Tải audio 3–8s)</span>
                                         <span id="cloneToggleIcon">▼</span>
                                     </button>
                                     <span id="cloneActiveBadge" style="display: none; font-size: 11.5px; color: #10b981; font-weight: 600; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px;">
@@ -412,13 +416,13 @@
                                 <!-- Clone giọng mẫu (3-8s) - Ẩn mặc định, bấm nút trên để mở -->
                                 <div id="voiceCloneWrapper" style="display: none; padding-top: 12px; margin-top: 4px; border-top: 1px dashed var(--border-default);">
                                     <label style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">
-                                        🧬 Clone Giọng Mới (Tải audio 3–8s):
+                                        <i data-lucide="dna" class="btn-icon"></i> Clone Giọng Mới (Tải audio 3–8s):
                                     </label>
                                     
                                     <div id="dropZoneRefAudio" class="ref-audio-dropzone">
                                         <input type="file" id="ttsRefAudioInput" accept="audio/*" style="display: none;">
                                         <div id="dropZoneText">
-                                            <span style="font-size: 20px;">🎤</span>
+                                            <i data-lucide="mic" style="width: 24px; height: 24px;"></i>
                                             <span style="font-size: 13px; color: var(--text-primary); font-weight: 500; margin-left: 6px;">
                                                 Kéo thả file âm thanh mẫu (3–8s) hoặc <u>nhấn để tải lên</u>
                                             </span>
@@ -432,39 +436,39 @@
                                     <!-- Box Lưu Giọng Để Dùng Lần Sau -->
                                     <div id="saveCloneVoiceContainer" style="display: none; margin-top: 10px; padding: 10px 12px; background: rgba(99, 102, 241, 0.08); border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.25);">
                                         <label style="font-size: 12px; font-weight: 600; color: #a5b4fc; display: block; margin-bottom: 6px;">
-                                            💾 Bạn có muốn lưu lại giọng này trên máy để lần sau dùng ngay không?
+                                            <i data-lucide="save" class="btn-icon"></i> Bạn có muốn lưu lại giọng này trên máy để lần sau dùng ngay không?
                                         </label>
                                         <div style="display: flex; gap: 8px;">
                                             <input type="text" id="customVoiceNameInput" class="custom-select-voice" placeholder="Đặt tên giọng (ví dụ: Giọng của tôi, MC thời sự...)" style="flex: 1; padding: 7px 12px; font-size: 12.5px;">
                                             <button type="button" id="btnSaveCustomVoice" class="btn-submit" style="white-space: nowrap; padding: 7px 14px; font-size: 12px; background: linear-gradient(135deg, #6366f1, #4f46e5); font-weight: 600;">
-                                                💾 Lưu Giọng
+                                                <i data-lucide="save" class="btn-icon"></i> Lưu Giọng
                                             </button>
                                         </div>
                                         <div id="saveCustomVoiceStatus" style="font-size: 11.5px; margin-top: 5px; display: none;"></div>
                                     </div>
 
                                     <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 5px; display: block;">
-                                        💡 Khi có file mẫu (wav/mp3 từ 3–8s), AI sẽ ưu tiên <b>clone y hệt giọng nói mẫu</b> thay vì dùng giọng dựng sẵn.
+                                        <i data-lucide="lightbulb" class="btn-icon"></i> Khi có file mẫu (wav/mp3 từ 3–8s), AI sẽ ưu tiên <b>clone y hệt giọng nói mẫu</b> thay vì dùng giọng dựng sẵn.
                                     </small>
                                 </div>
                             </div>
                         </div>
 
                         <button id="btnGenerateTts" type="button" class="btn-submit btn-submit-large">
-                            🎙️ Tạo Audio Ngay
+                            <i data-lucide="mic" class="btn-icon"></i> Tạo Audio Ngay
                         </button>
 
                         <!-- Result -->
                         <div id="ttsResultContainer" style="display: none;">
                             <div class="tts-result-card">
-                                <h4>✅ Nghe Thử & Sử Dụng</h4>
+                                <h4><i data-lucide="check-circle" class="btn-icon"></i> Nghe Thử & Sử Dụng</h4>
                                 <audio id="ttsAudioPreview" controls></audio>
                                 <div style="display: flex; gap: 10px;">
                                     <button id="btnDownloadTts" type="button" class="btn-secondary-action" style="flex: 1;">
-                                        ⬇️ Tải xuống MP3
+                                        <i data-lucide="download" class="btn-icon"></i> Tải xuống MP3
                                     </button>
                                     <button id="btnApplyTtsToVideo" type="button" class="btn-submit" style="flex: 1; background: linear-gradient(135deg, #10b981, #059669);">
-                                        ⚡ Dùng cho Tạo Video
+                                        <i data-lucide="zap" class="btn-icon"></i> Dùng cho Tạo Video
                                     </button>
                                 </div>
                             </div>
@@ -478,7 +482,7 @@
 
                     <!-- Page Header -->
                     <div class="page-header">
-                        <div class="page-header-icon indigo">🎬</div>
+                        <div class="page-header-icon indigo"><i data-lucide="clapperboard"></i></div>
                         <div class="page-header-body">
                             <h2>Render Video</h2>
                             <p>Tổng hợp audio, ảnh và nhạc nền thành video hoàn chỉnh với phụ đề tự động. Hỗ trợ xuất ngang (16:9) và dọc (9:16).</p>
@@ -490,7 +494,7 @@
                         <!-- GROUP 1: Nguồn dữ liệu -->
                         <div class="section-card">
                             <div class="section-card-header indigo">
-                                <span class="section-card-header-icon">📁</span>
+                                <span class="section-card-header-icon"><i data-lucide="folder-open"></i></span>
                                 <span class="section-card-header-title">Nguồn Dữ Liệu</span>
                             </div>
                             <div class="section-card-body">
@@ -498,7 +502,7 @@
                                 <!-- Audio -->
                                 <div class="form-section">
                                     <label for="audio">
-                                        <span class="icon">🎵</span>
+                                        <span class="icon"><i data-lucide="music"></i></span>
                                         <span>Chọn file Audio (MP3)</span>
                                         <span class="upload-hint">Giọng đọc chính của video</span>
                                         <span class="file-name" id="audioFileName" style="display: none;"></span>
@@ -509,7 +513,7 @@
                                 <!-- Script -->
                                 <div class="form-section">
                                     <label for="script">
-                                        <span class="icon">📄</span>
+                                        <span class="icon"><i data-lucide="file-text"></i></span>
                                         <span>Chọn file Kịch Bản (TXT)</span>
                                         <span class="upload-hint">File văn bản đã phân cảnh</span>
                                         <span class="file-name" id="scriptFileName" style="display: none;"></span>
@@ -521,7 +525,7 @@
                                 <div class="form-section">
                                     <div class="image-uploader-container">
                                         <div class="upload-trigger" id="uploadTrigger">
-                                            <span class="icon">🖼️</span>
+                                            <span class="icon"><i data-lucide="image-plus"></i></span>
                                             <span>Thêm Ảnh Scene</span>
                                             <p class="upload-hint">Click để chọn ảnh cho từng scene (theo thứ tự)</p>
                                             <input type="file" id="images" accept=".png,.jpg,.jpeg" multiple style="display: none;">
@@ -536,7 +540,7 @@
                         <!-- GROUP 2: Nền & Hiệu ứng -->
                         <div class="section-card">
                             <div class="section-card-header amber">
-                                <span class="section-card-header-icon">🎨</span>
+                                <span class="section-card-header-icon"><i data-lucide="palette"></i></span>
                                 <span class="section-card-header-title">Nền & Hiệu Ứng</span>
                             </div>
                             <div class="section-card-body">
@@ -544,7 +548,7 @@
                                 <!-- Background Image -->
                                 <div class="form-section">
                                     <label for="backgroundImage">
-                                        <span class="icon">🌄</span>
+                                        <span class="icon"><i data-lucide="image"></i></span>
                                         <span>Ảnh Nền (Tùy chọn)</span>
                                         <span class="upload-hint">Nếu chọn, ảnh scene sẽ được tách nền và đặt lên trên ảnh nền này</span>
                                         <span class="file-name" id="bgImageFileName" style="display: none;"></span>
@@ -564,7 +568,7 @@
                                 <!-- Background Music -->
                                 <div class="form-section">
                                     <label for="bgm" id="bgmLabel">
-                                        <span class="icon">🎶</span>
+                                        <span class="icon"><i data-lucide="music-2"></i></span>
                                         <span>Nhạc Nền (Tùy chọn)</span>
                                         <span class="upload-hint">MP3, WAV, OGG, M4A — phát song song với giọng đọc</span>
                                         <span class="file-name" id="bgmFileName" style="display: none;"></span>
@@ -576,7 +580,7 @@
                                 <div class="form-section" id="bgmVolumeContainer" style="display: none;">
                                     <div class="volume-slider-wrapper">
                                         <div class="volume-slider-header">
-                                            <span>🔊 Âm lượng nhạc nền</span>
+                                            <span><i data-lucide="volume-2" class="btn-icon"></i> Âm lượng nhạc nền</span>
                                             <span id="bgmVolumeValText">30%</span>
                                         </div>
                                         <input type="range" id="bgmVolume" min="0" max="100" value="30">
@@ -589,7 +593,7 @@
                         <!-- GROUP 3: Cài đặt xuất -->
                         <div class="section-card">
                             <div class="section-card-header emerald">
-                                <span class="section-card-header-icon">⚙️</span>
+                                <span class="section-card-header-icon"><i data-lucide="settings"></i></span>
                                 <span class="section-card-header-title">Cài Đặt Xuất Video</span>
                             </div>
                             <div class="section-card-body">
@@ -607,7 +611,7 @@
                                 <div class="form-section">
                                     <div class="volume-slider-wrapper">
                                         <div class="volume-slider-header">
-                                            <span>⏩ Tốc độ video</span>
+                                            <span><i data-lucide="gauge" class="btn-icon"></i> Tốc độ video</span>
                                             <span id="videoSpeedValText">1.00x</span>
                                         </div>
                                         <input type="range" id="videoSpeed" name="videoSpeed" min="0.5" max="2.0" step="0.05" value="1.0">
@@ -618,7 +622,7 @@
                                 <div class="form-section">
                                     <label class="toggle-row" for="enableKaraokeEffect">
                                         <span class="toggle-row-label">
-                                            <span class="toggle-row-icon">🎨</span>
+                                            <span class="toggle-row-icon"><i data-lucide="paintbrush"></i></span>
                                             <span>
                                                 <span class="toggle-row-title">Hiệu ứng đọc subtitle</span>
                                                 <span class="toggle-row-desc">Chữ chuyển màu vàng theo từng từ khi đọc</span>
@@ -636,7 +640,7 @@
 
                         <!-- Submit -->
                         <button type="submit" class="btn-submit btn-submit-large">
-                            🚀 Bắt Đầu Tạo Video
+                            <i data-lucide="rocket" class="btn-icon"></i> Bắt Đầu Tạo Video
                         </button>
 
                     </form>
@@ -647,7 +651,7 @@
                     <div class="ai-assistant-container">
 
                         <div class="page-header">
-                            <div class="page-header-icon violet">🖼️</div>
+                            <div class="page-header-icon violet"><i data-lucide="image-plus"></i></div>
                             <div class="page-header-body">
                                 <h2>Tạo Ảnh AI</h2>
                                 <p>Tự động tạo ảnh cho từng scene bằng Gemini AI. Ảnh được lưu vào server và hiển thị trực tiếp.</p>
@@ -657,13 +661,13 @@
                         <!-- Video ID -->
                         <div class="section-card">
                             <div class="section-card-header indigo">
-                                <span class="section-card-header-icon">🆔</span>
+                                <span class="section-card-header-icon"><i data-lucide="hash"></i></span>
                                 <span class="section-card-header-title">Video ID</span>
                             </div>
                             <div class="section-card-body">
                                 <div class="img-gen-input-row">
                                     <input type="text" id="imgGenVideoId" class="img-gen-text-input" placeholder="e.g. my-video-2024" />
-                                    <button type="button" id="btnGenVideoId" class="btn-gen-id" title="Tạo ID ngẫu nhiên">🔀 Tạo ID</button>
+                                    <button type="button" id="btnGenVideoId" class="btn-gen-id" title="Tạo ID ngẫu nhiên"><i data-lucide="shuffle" class="btn-icon"></i> Tạo ID</button>
                                 </div>
                             </div>
                         </div>
@@ -671,13 +675,13 @@
                         <!-- Prompts -->
                         <div class="section-card">
                             <div class="section-card-header violet">
-                                <span class="section-card-header-icon">💬</span>
+                                <span class="section-card-header-icon"><i data-lucide="message-square"></i></span>
                                 <span class="section-card-header-title">Danh Sách Prompts</span>
                             </div>
                             <div class="section-card-body">
                                 <div class="img-gen-prompts-header">
                                     <p class="upload-hint" style="margin: 0;">Mỗi dòng = 1 scene. Có thể import từ Tab Trợ Lý AI.</p>
-                                    <button type="button" id="btnImportPrompts" class="btn-import-prompts">⟵ Lấy từ Tab AI</button>
+                                    <button type="button" id="btnImportPrompts" class="btn-import-prompts"><i data-lucide="arrow-left" class="btn-icon"></i> Lấy từ Tab AI</button>
                                 </div>
                                 <textarea id="imgGenPrompts" class="custom-textarea img-gen-textarea"
                                     placeholder="Scene 1: A detailed fantasy landscape with mountains and fog...&#10;Scene 2: A warrior standing on a cliff at sunset...&#10;Scene 3: ..."
@@ -688,11 +692,11 @@
                         <!-- Actions -->
                         <div style="display: flex; gap: 12px;">
                             <button id="btnStartImageGen" type="button" class="btn-submit" style="flex: 1;">
-                                ✨ Bắt Đầu Tạo Ảnh
+                                <i data-lucide="sparkles" class="btn-icon"></i> Bắt Đầu Tạo Ảnh
                             </button>
                             <button id="btnDownloadAllImages" type="button" class="btn-submit"
                                 style="flex: 0 0 auto; background: linear-gradient(135deg, #7c3aed, #6d28d9); display: none;">
-                                📦 Tải Tất Cả (ZIP)
+                                <i data-lucide="package" class="btn-icon"></i> Tải Tất Cả (ZIP)
                             </button>
                         </div>
 
@@ -718,7 +722,7 @@
 
                 <!-- ══════════ PROGRESS VIEW ══════════ -->
                 <div id="progress" class="progress-section" style="display: none;">
-                    <h2>⏳ Đang Tạo Video...</h2>
+                    <h2><i data-lucide="loader" class="btn-icon spin-icon"></i> Đang Tạo Video...</h2>
                     <p class="progress-subtitle">Vui lòng chờ, chúng tôi đang lắp ráp câu chuyện của bạn...</p>
                     <div class="progress-container">
                         <div class="progress-bar">
@@ -774,7 +778,7 @@
 
                 <!-- ══════════ SUCCESS VIEW ══════════ -->
                 <div id="success" class="success-section" style="display: none;">
-                    <h2>🎉 Video Đã Tạo Thành Công!</h2>
+                    <h2><i data-lucide="party-popper" class="btn-icon"></i> Video Đã Tạo Thành Công!</h2>
                     <p>Xem trước video của bạn trước khi tải xuống:</p>
                     <div class="video-preview-container">
                         <video id="videoPreviewPlayer" controls>
@@ -782,18 +786,18 @@
                         </video>
                     </div>
                     <div class="success-actions">
-                        <a id="downloadLink" href="#" class="btn-download">⬇️ Tải Video</a>
-                        <button onclick="location.reload()" class="btn-secondary-action">🔄 Tạo Video Mới</button>
+                        <a id="downloadLink" href="#" class="btn-download"><i data-lucide="download" class="btn-icon"></i> Tải Video</a>
+                        <button onclick="location.reload()" class="btn-secondary-action"><i data-lucide="refresh-cw" class="btn-icon"></i> Tạo Video Mới</button>
                     </div>
 
                     <!-- YouTube Upload -->
                     <div id="youtubeUploadSection" class="yt-upload-section">
-                        <h3>▶️ Upload lên YouTube</h3>
+                        <h3><i data-lucide="youtube" class="btn-icon"></i> Upload lên YouTube</h3>
                         <div id="youtubeAuthSection">
                             <p class="upload-hint" style="margin-bottom: 12px;">Kết nối tài khoản YouTube để đăng video trực tiếp.</p>
                             <button id="btnYoutubeConnect" type="button" class="btn-secondary-action"
                                 style="background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #fca5a5;">
-                                🔗 Kết nối YouTube
+                                <i data-lucide="link" class="btn-icon"></i> Kết nối YouTube
                             </button>
                         </div>
 
@@ -821,7 +825,7 @@
 
                             <button id="btnYoutubeUpload" type="button" class="btn-submit btn-submit-large"
                                 style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 22px rgba(239,68,68,0.35);">
-                                ▶️ Tải lên YouTube
+                                <i data-lucide="upload" class="btn-icon"></i> Tải lên YouTube
                             </button>
 
                             <div id="ytUploadProgress" style="display: none; margin-top: 16px; text-align: center;">
@@ -834,9 +838,9 @@
 
                 <!-- ══════════ ERROR VIEW ══════════ -->
                 <div id="error" class="error-section" style="display: none;">
-                    <h2>❌ Có Lỗi Xảy Ra</h2>
+                    <h2><i data-lucide="alert-circle" class="btn-icon"></i> Có Lỗi Xảy Ra</h2>
                     <p id="errorMessage"></p>
-                    <button onclick="location.reload()" class="btn-retry">🔄 Thử Lại</button>
+                    <button onclick="location.reload()" class="btn-retry"><i data-lucide="rotate-ccw" class="btn-icon"></i> Thử Lại</button>
                 </div>
 
             </div><!-- /.content-wrapper -->
@@ -1033,7 +1037,7 @@
                 } else {
                     cloneWrapper.style.display = 'none';
                     btnToggleVoiceClone.classList.remove('active');
-                    if (cloneToggleBtnText) cloneToggleBtnText.textContent = '🧬 Clone Giọng Mới (Tải audio 3–8s)';
+                    if (cloneToggleBtnText) cloneToggleBtnText.textContent = '<i data-lucide="dna" class="btn-icon"></i> Clone Giọng Mới (Tải audio 3–8s)';
                     if (cloneToggleIcon) cloneToggleIcon.textContent = '▼';
                 }
             });
@@ -1219,5 +1223,6 @@
     });
     </script>
     <script src="app.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', () => { if (typeof lucide !== 'undefined') lucide.createIcons(); });</script>
 </body>
 </html>
