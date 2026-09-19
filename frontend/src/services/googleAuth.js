@@ -7,10 +7,7 @@
  * Không cần backend server!
  */
 
-const SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',   // Chỉ truy cập file do app tạo
-  'https://www.googleapis.com/auth/youtube.upload', // Upload YouTube
-].join(' ');
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
 let tokenClient = null;
 let gapiLoaded = false;

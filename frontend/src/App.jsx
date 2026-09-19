@@ -69,7 +69,7 @@ function Layout({ children, authenticated, onSignIn, onSignOut }) {
               🔗 Đăng nhập với Google
             </button>
             <p className="text-gray-500 text-sm mt-4">
-              Cần quyền truy cập Google Drive và YouTube
+              Cần quyền lưu trữ video trên Google Drive của bạn
             </p>
           </div>
         )}
