@@ -426,6 +426,55 @@ function initYoutubeSection(sessionId, metadata) {
         }
     });
 
+    // Step 3 YouTube Schedule / Immediate Mode Toggle
+    let step3Mode = 'now';
+    const btnStep3ModeNow = document.getElementById('btnYtStep3ModeNow');
+    const btnStep3ModeSchedule = document.getElementById('btnYtStep3ModeSchedule');
+    const step3PrivacyWrap = document.getElementById('ytStep3PrivacyWrap');
+    const step3ScheduleWrap = document.getElementById('ytStep3ScheduleWrap');
+    const ytPublishAt = document.getElementById('ytPublishAt');
+
+    function updateStep3MinTime() {
+        if (!ytPublishAt) return;
+        const now = new Date(Date.now() + 5 * 60 * 1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        const formatted = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        ytPublishAt.min = formatted;
+        if (!ytPublishAt.value) ytPublishAt.value = formatted;
+    }
+    updateStep3MinTime();
+
+    if (btnStep3ModeNow && btnStep3ModeSchedule) {
+        btnStep3ModeNow.addEventListener('click', () => {
+            step3Mode = 'now';
+            btnStep3ModeNow.style.background = 'rgba(99,102,241,0.2)';
+            btnStep3ModeNow.style.borderColor = '#6366f1';
+            btnStep3ModeNow.style.color = '#fff';
+            btnStep3ModeSchedule.style.background = 'rgba(255,255,255,0.03)';
+            btnStep3ModeSchedule.style.borderColor = 'rgba(255,255,255,0.1)';
+            btnStep3ModeSchedule.style.color = 'var(--text-secondary)';
+            if (step3PrivacyWrap) step3PrivacyWrap.style.display = 'block';
+            if (step3ScheduleWrap) step3ScheduleWrap.style.display = 'none';
+            btnUpload.innerHTML = '<i data-lucide="upload" class="btn-icon"></i> Tải lên YouTube';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+
+        btnStep3ModeSchedule.addEventListener('click', () => {
+            step3Mode = 'schedule';
+            btnStep3ModeSchedule.style.background = 'rgba(59,130,246,0.2)';
+            btnStep3ModeSchedule.style.borderColor = '#3b82f6';
+            btnStep3ModeSchedule.style.color = '#fff';
+            btnStep3ModeNow.style.background = 'rgba(255,255,255,0.03)';
+            btnStep3ModeNow.style.borderColor = 'rgba(255,255,255,0.1)';
+            btnStep3ModeNow.style.color = 'var(--text-secondary)';
+            if (step3PrivacyWrap) step3PrivacyWrap.style.display = 'none';
+            if (step3ScheduleWrap) step3ScheduleWrap.style.display = 'block';
+            btnUpload.innerHTML = '<i data-lucide="clock" class="btn-icon"></i> Xác nhận Lên Lịch Đăng';
+            updateStep3MinTime();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    }
+
     const newBtnUpload = btnUpload.cloneNode(true);
     btnUpload.parentNode.replaceChild(newBtnUpload, btnUpload);
     newBtnUpload.addEventListener('click', async () => {
@@ -435,9 +484,21 @@ function initYoutubeSection(sessionId, metadata) {
             return;
         }
 
+        let privacyStatus = document.getElementById('ytPrivacy') ? document.getElementById('ytPrivacy').value : 'public';
+        let publishAt = null;
+
+        if (step3Mode === 'schedule') {
+            if (!ytPublishAt || !ytPublishAt.value) {
+                alert('Vui lòng chọn ngày và giờ tự động đăng video!');
+                return;
+            }
+            publishAt = new Date(ytPublishAt.value).toISOString();
+            privacyStatus = 'private';
+        }
+
         newBtnUpload.disabled = true;
         uploadProgress.style.display = 'block';
-        uploadStatus.textContent = 'Đang tải lên YouTube... Xin đừng đóng trang';
+        uploadStatus.textContent = publishAt ? 'Đang lên lịch đăng lên YouTube... Xin đừng đóng trang' : 'Đang tải lên YouTube... Xin đừng đóng trang';
 
         try {
             const payload = {
@@ -445,7 +506,8 @@ function initYoutubeSection(sessionId, metadata) {
                 title: title,
                 description: ytDesc.value.trim(),
                 tags: ytTags.value.trim(),
-                privacyStatus: document.getElementById('ytPrivacy').value
+                privacyStatus: privacyStatus,
+                publishAt: publishAt
             };
 
             const res = await fetch('/api/youtube/upload', {
@@ -463,7 +525,11 @@ function initYoutubeSection(sessionId, metadata) {
                         const job = await progRes.json();
                         if (job.status === 'completed') {
                             clearInterval(pollInterval);
-                            uploadStatus.innerHTML = `✅ Thành công! Xem video tại: <a href="https://youtu.be/${job.videoId}" target="_blank" style="color:#a5b4fc; font-weight: 600;">https://youtu.be/${job.videoId}</a>`;
+                            if (job.publishAt) {
+                                uploadStatus.innerHTML = `✅ Đã lên lịch thành công! Video sẽ được đăng lúc <strong>${new Date(job.publishAt).toLocaleString('vi-VN')}</strong>.<br><a href="https://youtu.be/${job.videoId}" target="_blank" style="color:#a5b4fc; font-weight: 600;">Xem link YouTube</a>`;
+                            } else {
+                                uploadStatus.innerHTML = `✅ Thành công! Xem video tại: <a href="https://youtu.be/${job.videoId}" target="_blank" style="color:#a5b4fc; font-weight: 600;">https://youtu.be/${job.videoId}</a>`;
+                            }
                             newBtnUpload.disabled = false;
                         } else if (job.status === 'failed') {
                             clearInterval(pollInterval);
@@ -488,6 +554,48 @@ function initYoutubeSection(sessionId, metadata) {
             newBtnUpload.disabled = false;
         }
     });
+
+    setupQuickTimeButtons();
+}
+
+// --- Quick Time Preset Helper ---
+function setupQuickTimeButtons() {
+    document.querySelectorAll('.btn-yt-quick-time').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            const targetId = btn.getAttribute('data-target');
+            const targetInput = document.getElementById(targetId);
+            if (!targetInput) return;
+
+            const pad = (n) => String(n).padStart(2, '0');
+            const formatForInput = (d) => {
+                return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            };
+
+            const now = new Date();
+            let chosen = new Date();
+
+            const hours = btn.getAttribute('data-hours');
+            const preset = btn.getAttribute('data-preset');
+
+            if (hours) {
+                chosen = new Date(now.getTime() + parseInt(hours) * 60 * 60 * 1000);
+            } else if (preset === 'tonight') {
+                chosen.setHours(19, 0, 0, 0);
+                if (chosen <= now) {
+                    chosen.setDate(chosen.getDate() + 1);
+                }
+            } else if (preset === 'tomorrow_morning') {
+                chosen.setDate(chosen.getDate() + 1);
+                chosen.setHours(8, 0, 0, 0);
+            } else if (preset === 'tomorrow_evening') {
+                chosen.setDate(chosen.getDate() + 1);
+                chosen.setHours(19, 0, 0, 0);
+            }
+
+            targetInput.value = formatForInput(chosen);
+        };
+    });
 }
 
 // --- YouTube Tab 4 Full Manager ---
@@ -510,7 +618,13 @@ function initYoutubeTab() {
     const titleInput = document.getElementById('ytTabTitle');
     const descInput = document.getElementById('ytTabDescription');
     const tagsInput = document.getElementById('ytTabTags');
-    const publishMode = document.getElementById('ytTabPublishMode');
+    
+    // Tab 4 mode toggles
+    let tabMode = 'now';
+    const btnTabModeNow = document.getElementById('btnYtTabModeNow');
+    const btnTabModeSchedule = document.getElementById('btnYtTabModeSchedule');
+    const tabPrivacyWrap = document.getElementById('ytTabPrivacyWrap');
+    const tabPrivacySelect = document.getElementById('ytTabPrivacySelect');
     const scheduleBox = document.getElementById('ytTabScheduleTimeBox');
     const publishAtInput = document.getElementById('ytTabPublishAt');
     const btnSubmit = document.getElementById('btnYtTabSubmit');
@@ -540,19 +654,34 @@ function initYoutubeTab() {
     }
     updateMinScheduleTime();
 
-    if (publishMode) {
-        publishMode.addEventListener('change', () => {
-            const isSchedule = publishMode.value === 'schedule';
-            scheduleBox.style.display = isSchedule ? 'block' : 'none';
-            if (isSchedule) {
-                updateMinScheduleTime();
-                btnSubmit.innerHTML = '<i data-lucide="clock" class="btn-icon"></i> Xác Nhận Lên Lịch Đăng YouTube';
-            } else {
-                btnSubmit.innerHTML = '<i data-lucide="upload-cloud" class="btn-icon"></i> Bắt Đầu Đăng Lên YouTube';
-            }
+    if (btnTabModeNow && btnTabModeSchedule) {
+        btnTabModeNow.addEventListener('click', () => {
+            tabMode = 'now';
+            btnTabModeNow.style.background = 'rgba(99,102,241,0.15)';
+            btnTabModeNow.style.borderColor = '#6366f1';
+            btnTabModeSchedule.style.background = 'rgba(255,255,255,0.03)';
+            btnTabModeSchedule.style.borderColor = 'rgba(255,255,255,0.1)';
+            if (tabPrivacyWrap) tabPrivacyWrap.style.display = 'block';
+            if (scheduleBox) scheduleBox.style.display = 'none';
+            btnSubmit.innerHTML = '<i data-lucide="upload-cloud" class="btn-icon"></i> Bắt Đầu Đăng Lên YouTube';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+
+        btnTabModeSchedule.addEventListener('click', () => {
+            tabMode = 'schedule';
+            btnTabModeSchedule.style.background = 'rgba(59,130,246,0.2)';
+            btnTabModeSchedule.style.borderColor = '#3b82f6';
+            btnTabModeNow.style.background = 'rgba(255,255,255,0.03)';
+            btnTabModeNow.style.borderColor = 'rgba(255,255,255,0.1)';
+            if (tabPrivacyWrap) tabPrivacyWrap.style.display = 'none';
+            if (scheduleBox) scheduleBox.style.display = 'block';
+            btnSubmit.innerHTML = '<i data-lucide="clock" class="btn-icon"></i> Xác Nhận Lên Lịch Đăng YouTube';
+            updateMinScheduleTime();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
     }
+
+    setupQuickTimeButtons();
 
     async function checkAuth() {
         try {
@@ -745,14 +874,13 @@ function initYoutubeTab() {
             return;
         }
 
-        const mode = publishMode.value;
         let publishAt = null;
-        let privacyStatus = mode;
+        let privacyStatus = tabPrivacySelect ? tabPrivacySelect.value : 'public';
 
-        if (mode === 'schedule') {
-            const schedVal = publishAtInput.value;
+        if (tabMode === 'schedule') {
+            const schedVal = publishAtInput ? publishAtInput.value : '';
             if (!schedVal) {
-                alert('Vui lòng chọn ngày và giờ phát hành!');
+                alert('Vui lòng chọn ngày và giờ tự động đăng video!');
                 return;
             }
             publishAt = new Date(schedVal).toISOString();

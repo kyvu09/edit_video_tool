@@ -1,0 +1,12 @@
+{
+  "name": "editvideotool-worker",
+  "version": "1.0.0",
+  "description": "GitHub Actions worker — tải video từ Drive, upload lên YouTube đúng lịch",
+  "main": "index.js",
+  "scripts": {
+    "worker": "node index.js"
+  },
+  "dependencies": {
+    "googleapis": "^140.0.0"
+  }
+}

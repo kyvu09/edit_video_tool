@@ -825,12 +825,41 @@
                             <label class="yt-form-label">Tags (cách nhau bằng dấu phẩy)</label>
                             <input type="text" id="ytTags" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 10px;">
 
-                            <label class="yt-form-label">Trạng thái</label>
-                            <select id="ytPrivacy" style="margin-top: 4px; margin-bottom: 16px;">
-                                <option value="private">🔒 Riêng tư (Private)</option>
-                                <option value="unlisted">🔗 Không công khai (Unlisted)</option>
-                                <option value="public">🌐 Công khai (Public)</option>
-                            </select>
+                            <label class="yt-form-label">Chế độ đăng</label>
+                            <div style="display: flex; gap: 8px; margin-top: 4px; margin-bottom: 12px;">
+                                <button type="button" id="btnYtStep3ModeNow" class="btn-secondary-action" style="flex: 1; padding: 9px 12px; font-size: 0.88em; background: rgba(99,102,241,0.2); border-color: #6366f1; color: #fff;">
+                                    🚀 Đăng ngay
+                                </button>
+                                <button type="button" id="btnYtStep3ModeSchedule" class="btn-secondary-action" style="flex: 1; padding: 9px 12px; font-size: 0.88em; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: var(--text-secondary);">
+                                    🕐 Hẹn giờ đăng
+                                </button>
+                            </div>
+
+                            <!-- Khi chọn đăng ngay -->
+                            <div id="ytStep3PrivacyWrap">
+                                <label class="yt-form-label">Quyền riêng tư</label>
+                                <select id="ytPrivacy" style="margin-top: 4px; margin-bottom: 16px;">
+                                    <option value="public" selected>🌐 Công khai (Public)</option>
+                                    <option value="unlisted">🔗 Không công khai (Unlisted)</option>
+                                    <option value="private">🔒 Riêng tư (Private)</option>
+                                </select>
+                            </div>
+
+                            <!-- Khi chọn hẹn giờ đăng -->
+                            <div id="ytStep3ScheduleWrap" style="display: none; background: rgba(59,130,246,0.08); border: 1px dashed rgba(59,130,246,0.3); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+                                <label class="yt-form-label" style="color: #60a5fa; margin-top: 0; font-weight: 700;">📅 Chọn Ngày & Giờ tự động đăng:</label>
+                                <input type="datetime-local" id="ytPublishAt" class="custom-textarea" style="padding: 10px 14px; margin-top: 6px; margin-bottom: 8px; background: rgba(0,0,0,0.3);">
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytPublishAt" data-hours="1" style="padding: 4px 10px; font-size: 0.75em;">+1 Giờ</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytPublishAt" data-hours="3" style="padding: 4px 10px; font-size: 0.75em;">+3 Giờ</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytPublishAt" data-preset="tonight" style="padding: 4px 10px; font-size: 0.75em;">Tối nay 19:00</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytPublishAt" data-preset="tomorrow_morning" style="padding: 4px 10px; font-size: 0.75em;">Sáng mai 08:00</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytPublishAt" data-preset="tomorrow_evening" style="padding: 4px 10px; font-size: 0.75em;">Tối mai 19:00</button>
+                                </div>
+                                <p class="upload-hint" style="margin: 0; color: #93c5fd; font-size: 0.8em;">
+                                    ℹ️ Video sẽ được tải lên YouTube ở chế độ riêng tư và tự động chuyển sang công khai vào đúng thời điểm bạn chọn.
+                                </p>
+                            </div>
 
                             <button id="btnYoutubeUpload" type="button" class="btn-submit btn-submit-large"
                                 style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 22px rgba(239,68,68,0.35);">
@@ -943,20 +972,53 @@
                                 <label class="yt-form-label">Tags (cách nhau bằng dấu phẩy)</label>
                                 <input type="text" id="ytTabTags" class="custom-textarea" placeholder="ai, video, shorts, tintuc..." style="padding: 11px 14px; margin-top: 4px; margin-bottom: 16px;">
 
-                                <label class="yt-form-label">Chế độ phát hành *</label>
-                                <select id="ytTabPublishMode" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 14px;">
-                                    <option value="public" selected>🌐 Công khai ngay (Public)</option>
-                                    <option value="unlisted">🔗 Không công khai (Unlisted)</option>
-                                    <option value="private">🔒 Riêng tư (Private)</option>
-                                    <option value="schedule">🕐 Hẹn giờ phát hành tự động (Scheduled Release)</option>
-                                </select>
+                                <label class="yt-form-label">Chọn chế độ phát hành</label>
+                                <div style="display: flex; gap: 10px; margin-top: 6px; margin-bottom: 14px;">
+                                    <button type="button" id="btnYtTabModeNow" class="btn-secondary-action" style="flex: 1; padding: 14px; text-align: left; background: rgba(99,102,241,0.15); border-color: #6366f1; border-radius: 10px; cursor: pointer;">
+                                        <div style="font-weight: 700; color: #fff; font-size: 0.95em; display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 1.3em;">🚀</span> Đăng ngay bây giờ
+                                        </div>
+                                        <div style="font-size: 0.8em; color: var(--text-secondary); margin-top: 4px;">Xuất bản video trực tiếp lên kênh ngay sau khi upload</div>
+                                    </button>
 
-                                <!-- Ô chọn ngày giờ khi chọn Hẹn giờ -->
-                                <div id="ytTabScheduleTimeBox" style="display: none; background: rgba(59,130,246,0.08); border: 1px dashed rgba(59,130,246,0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                                    <label class="yt-form-label" style="color: #60a5fa; font-weight: 600;">Chọn Ngày & Giờ phát hành:</label>
-                                    <input type="datetime-local" id="ytTabPublishAt" class="custom-textarea" style="padding: 11px 14px; margin-top: 6px; margin-bottom: 8px;">
-                                    <p class="upload-hint" style="margin: 0; color: #93c5fd;">
-                                        ℹ️ Video sẽ được tải lên YouTube ở chế độ riêng tư và YouTube sẽ tự động công chiếu/phát hành đúng thời điểm bạn chọn.
+                                    <button type="button" id="btnYtTabModeSchedule" class="btn-secondary-action" style="flex: 1; padding: 14px; text-align: left; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;">
+                                        <div style="font-weight: 700; color: #60a5fa; font-size: 0.95em; display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 1.3em;">🕐</span> Hẹn giờ tự động đăng
+                                        </div>
+                                        <div style="font-size: 0.8em; color: var(--text-secondary); margin-top: 4px;">Chọn ngày và giờ cụ thể để YouTube tự động công chiếu</div>
+                                    </button>
+                                </div>
+
+                                <!-- Khi chọn đăng ngay -->
+                                <div id="ytTabPrivacyWrap">
+                                    <label class="yt-form-label">Quyền riêng tư</label>
+                                    <select id="ytTabPrivacySelect" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 16px;">
+                                        <option value="public" selected>🌐 Công khai (Public)</option>
+                                        <option value="unlisted">🔗 Không công khai (Unlisted)</option>
+                                        <option value="private">🔒 Riêng tư (Private)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Khi chọn hẹn giờ -->
+                                <div id="ytTabScheduleTimeBox" style="display: none; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.35); border-radius: 12px; padding: 18px; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(59,130,246,0.15);">
+                                    <label class="yt-form-label" style="color: #60a5fa; font-weight: 700; margin-top: 0; font-size: 1.05em; display: flex; align-items: center; gap: 6px;">
+                                        📅 Chọn Ngày & Giờ tự động đăng (Lên lịch phát sóng):
+                                    </label>
+                                    <input type="datetime-local" id="ytTabPublishAt" class="custom-textarea" style="padding: 12px 14px; margin-top: 8px; margin-bottom: 10px; font-size: 1.1em; font-weight: 600; background: rgba(0,0,0,0.4); border-color: rgba(96,165,250,0.5); color: #fff;">
+                                    
+                                    <div style="margin-bottom: 10px;">
+                                        <span style="font-size: 0.82em; color: #cbd5e1; font-weight: 600;">⚡ Gợi ý chọn nhanh:</span>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-hours="1" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">+1 Giờ</button>
+                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-hours="3" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">+3 Giờ</button>
+                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tonight" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">Tối nay 19:00</button>
+                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tomorrow_morning" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">Sáng mai 08:00</button>
+                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tomorrow_evening" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">Tối mai 19:00</button>
+                                        </div>
+                                    </div>
+
+                                    <p class="upload-hint" style="margin: 0; color: #93c5fd; font-size: 0.85em; line-height: 1.5;">
+                                        ℹ️ <strong>Cơ chế tự động của YouTube:</strong> Video sẽ được tải lên YouTube ở chế độ riêng tư và YouTube sẽ tự động công chiếu hoặc chuyển sang công khai vào đúng ngày & giờ bạn đã đặt.
                                     </p>
                                 </div>
 
