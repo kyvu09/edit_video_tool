@@ -59,6 +59,15 @@
                     </div>
                     <span class="step-num">3</span>
                 </button>
+
+                <button class="tab-btn" data-tab="youtube-publish-tab">
+                    <div class="tab-btn-icon" style="color: #ef4444;"><i data-lucide="youtube"></i></div>
+                    <div class="tab-btn-text">
+                        <span class="tab-btn-title">Đăng YouTube</span>
+                        <span class="tab-btn-desc">Upload & lên lịch phát sóng</span>
+                    </div>
+                    <span class="step-num">4</span>
+                </button>
             </nav>
 
             <!-- API Status -->
@@ -831,6 +840,162 @@
                             <div id="ytUploadProgress" style="display: none; margin-top: 16px; text-align: center;">
                                 <div class="spinner" style="margin: 0 auto 10px auto; width: 22px; height: 22px;"></div>
                                 <p id="ytUploadStatus" style="font-size: 0.9em; color: var(--text-secondary);">Đang tải lên...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══════════ TAB 4: ĐĂNG & LÊN LỊCH YOUTUBE ══════════ -->
+                <div id="youtube-publish-tab" class="tab-content">
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i data-lucide="youtube"></i></div>
+                        <div class="page-header-body">
+                            <h2>Đăng & Lên Lịch YouTube</h2>
+                            <p>Quản lý tài khoản YouTube, chọn video đã render trong tool hoặc tải lên file mới, xuất bản ngay hoặc đặt lịch phát hành tự động.</p>
+                        </div>
+                    </div>
+
+                    <div class="ai-assistant-container">
+                        <!-- Card 1: Tài khoản YouTube -->
+                        <div class="section-card">
+                            <div class="section-card-header" style="background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.05)); border-color: rgba(239,68,68,0.25);">
+                                <span class="section-card-header-icon" style="color: #ef4444;"><i data-lucide="shield-check"></i></span>
+                                <span class="section-card-header-title">Tài Khoản Kênh YouTube</span>
+                            </div>
+                            <div class="section-card-body">
+                                <!-- Trạng thái: Chưa kết nối -->
+                                <div id="ytTabAuthDisconnected" style="display: none; padding: 12px 0;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                                        <div>
+                                            <p style="font-weight: 600; color: #f87171; margin-bottom: 4px;">⚠️ Chưa kết nối tài khoản YouTube</p>
+                                            <p class="upload-hint" style="margin: 0;">Kết nối Google Account có kênh YouTube của bạn để cấp quyền đăng video tự động.</p>
+                                        </div>
+                                        <button id="btnYtTabConnect" type="button" class="btn-submit"
+                                            style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 16px rgba(239,68,68,0.35); padding: 10px 22px; width: auto; margin: 0;">
+                                            <i data-lucide="link" class="btn-icon"></i> Kết Nối YouTube
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Trạng thái: Đã kết nối -->
+                                <div id="ytTabAuthConnected" style="display: none; padding: 8px 0;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                                        <div style="display: flex; align-items: center; gap: 14px;">
+                                            <img id="ytTabChannelAvatar" src="" alt="Avatar" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #ef4444; object-fit: cover; display: none;">
+                                            <div id="ytTabChannelAvatarPlaceholder" style="width: 48px; height: 48px; border-radius: 50%; background: rgba(239,68,68,0.15); display: flex; align-items: center; justify-content: center; color: #ef4444; font-weight: bold; font-size: 1.2em;">YT</div>
+                                            <div>
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <h4 id="ytTabChannelTitle" style="margin: 0; font-size: 1.05em; font-weight: 700;">Tên kênh YouTube</h4>
+                                                    <span style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 0.72em; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(16,185,129,0.3);">Đã kết nối</span>
+                                                </div>
+                                                <p id="ytTabChannelSubscribers" style="margin: 3px 0 0 0; font-size: 0.82em; color: var(--text-secondary);">0 người đăng ký</p>
+                                            </div>
+                                        </div>
+                                        <button id="btnYtTabLogout" type="button" class="btn-secondary-action" style="padding: 7px 14px; font-size: 0.85em;">
+                                            <i data-lucide="log-out" class="btn-icon"></i> Đăng xuất
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Chọn Video để Đăng -->
+                        <div class="section-card">
+                            <div class="section-card-header violet">
+                                <span class="section-card-header-icon"><i data-lucide="film"></i></span>
+                                <span class="section-card-header-title">Chọn Video Đã Render</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
+                                    <div style="flex: 1;">
+                                        <select id="ytTabVideoSelect" class="custom-textarea" style="padding: 10px 14px; margin: 0;">
+                                            <option value="">-- Đang tải danh sách video... --</option>
+                                        </select>
+                                    </div>
+                                    <button id="btnYtTabRefreshVideos" type="button" class="btn-secondary-action" style="padding: 10px 16px; margin: 0; white-space: nowrap;">
+                                        <i data-lucide="refresh-cw" class="btn-icon"></i> Làm mới
+                                    </button>
+                                </div>
+
+                                <div id="ytTabPlayerWrapper" style="display: none; margin-top: 14px;">
+                                    <p class="upload-hint" style="margin-bottom: 6px;">Xem trước video đã chọn:</p>
+                                    <div style="background: #000; border-radius: 12px; overflow: hidden; max-height: 320px; display: flex; justify-content: center;">
+                                        <video id="ytTabPlayer" controls style="max-height: 320px; width: 100%; object-fit: contain;"></video>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Thiết lập Thông tin & Lên Lịch -->
+                        <div class="section-card">
+                            <div class="section-card-header" style="background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.05)); border-color: rgba(59,130,246,0.25);">
+                                <span class="section-card-header-icon" style="color: #3b82f6;"><i data-lucide="file-text"></i></span>
+                                <span class="section-card-header-title">Thông Tin Video & Lịch Phát Sóng</span>
+                            </div>
+                            <div class="section-card-body">
+                                <label class="yt-form-label">Tiêu đề YouTube *</label>
+                                <input type="text" id="ytTabTitle" class="custom-textarea" placeholder="Nhập tiêu đề video..." style="padding: 11px 14px; margin-top: 4px; margin-bottom: 12px;">
+
+                                <label class="yt-form-label">Mô tả video</label>
+                                <textarea id="ytTabDescription" rows="5" class="custom-textarea" placeholder="Mô tả nội dung, hashtags, links..." style="margin-top: 4px; margin-bottom: 12px;"></textarea>
+
+                                <label class="yt-form-label">Tags (cách nhau bằng dấu phẩy)</label>
+                                <input type="text" id="ytTabTags" class="custom-textarea" placeholder="ai, video, shorts, tintuc..." style="padding: 11px 14px; margin-top: 4px; margin-bottom: 16px;">
+
+                                <label class="yt-form-label">Chế độ phát hành *</label>
+                                <select id="ytTabPublishMode" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 14px;">
+                                    <option value="public" selected>🌐 Công khai ngay (Public)</option>
+                                    <option value="unlisted">🔗 Không công khai (Unlisted)</option>
+                                    <option value="private">🔒 Riêng tư (Private)</option>
+                                    <option value="schedule">🕐 Hẹn giờ phát hành tự động (Scheduled Release)</option>
+                                </select>
+
+                                <!-- Ô chọn ngày giờ khi chọn Hẹn giờ -->
+                                <div id="ytTabScheduleTimeBox" style="display: none; background: rgba(59,130,246,0.08); border: 1px dashed rgba(59,130,246,0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                                    <label class="yt-form-label" style="color: #60a5fa; font-weight: 600;">Chọn Ngày & Giờ phát hành:</label>
+                                    <input type="datetime-local" id="ytTabPublishAt" class="custom-textarea" style="padding: 11px 14px; margin-top: 6px; margin-bottom: 8px;">
+                                    <p class="upload-hint" style="margin: 0; color: #93c5fd;">
+                                        ℹ️ Video sẽ được tải lên YouTube ở chế độ riêng tư và YouTube sẽ tự động công chiếu/phát hành đúng thời điểm bạn chọn.
+                                    </p>
+                                </div>
+
+                                <button id="btnYtTabSubmit" type="button" class="btn-submit btn-submit-large"
+                                    style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 22px rgba(239,68,68,0.35); margin-top: 8px;">
+                                    <i data-lucide="upload-cloud" class="btn-icon"></i> Bắt Đầu Đăng Lên YouTube
+                                </button>
+
+                                <!-- Progress & Success -->
+                                <div id="ytTabProgressWrap" style="display: none; margin-top: 20px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.88em; margin-bottom: 6px;">
+                                        <span id="ytTabProgressStatus" style="color: #94a3b8;">Đang tải lên YouTube...</span>
+                                        <span id="ytTabProgressPct" style="font-weight: 700; color: #ef4444;">0%</span>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.08); border-radius: 999px; height: 8px; overflow: hidden;">
+                                        <div id="ytTabProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ef4444, #f87171); transition: width 0.3s ease;"></div>
+                                    </div>
+                                </div>
+
+                                <div id="ytTabSuccessAlert" style="display: none; margin-top: 18px; padding: 16px; border-radius: 12px; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.35);">
+                                    <h4 style="color: #10b981; margin: 0 0 6px 0; font-size: 1.05em;"><i data-lucide="check-circle" class="btn-icon"></i> Thành công!</h4>
+                                    <p id="ytTabSuccessMessage" style="margin: 0 0 10px 0; font-size: 0.9em; color: #d1fae5;"></p>
+                                    <a id="ytTabWatchLink" href="#" target="_blank" class="btn-secondary-action" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 0.88em; background: rgba(16,185,129,0.2); border-color: rgba(16,185,129,0.4); color: #6ee7b7;">
+                                        <i data-lucide="external-link" class="btn-icon"></i> Xem trên YouTube
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Lịch Sử Video Đã Đăng -->
+                        <div class="section-card">
+                            <div class="section-card-header" style="background: rgba(255,255,255,0.03);">
+                                <span class="section-card-header-icon"><i data-lucide="history"></i></span>
+                                <span class="section-card-header-title">Lịch Sử Upload & Lên Lịch Gần Đây</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div id="ytTabHistoryList" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <p class="upload-hint" style="text-align: center; margin: 12px 0;">Chưa có video nào được đăng từ tool này.</p>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -2264,3 +2264,14 @@ select option {
 .toggle-switch input:checked + .toggle-slider::before {
     transform: translateX(20px);
 }
+
+/* YouTube Tab Form Labels */
+.yt-form-label {
+    display: block;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 10px;
+    margin-bottom: 4px;
+}
+

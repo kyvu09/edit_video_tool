@@ -455,8 +455,30 @@ function initYoutubeSection(sessionId, metadata) {
             });
 
             const data = await res.json();
-            if (data.success) {
-                uploadStatus.innerHTML = `✅ Thành công! Xem video tại: <a href="https://youtu.be/${data.videoId}" target="_blank" style="color:#a5b4fc;">https://youtu.be/${data.videoId}</a>`;
+            if (data.success && data.jobId) {
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const progRes = await fetch(`/api/youtube/upload-progress/${data.jobId}`);
+                        if (!progRes.ok) return;
+                        const job = await progRes.json();
+                        if (job.status === 'completed') {
+                            clearInterval(pollInterval);
+                            uploadStatus.innerHTML = `✅ Thành công! Xem video tại: <a href="https://youtu.be/${job.videoId}" target="_blank" style="color:#a5b4fc; font-weight: 600;">https://youtu.be/${job.videoId}</a>`;
+                            newBtnUpload.disabled = false;
+                        } else if (job.status === 'failed') {
+                            clearInterval(pollInterval);
+                            uploadStatus.innerHTML = `<span style="color:#ef4444;">❌ Lỗi: ${job.error}</span>`;
+                            newBtnUpload.disabled = false;
+                        } else {
+                            uploadStatus.textContent = `Đang tải lên YouTube... ${job.progress}%`;
+                        }
+                    } catch (err) {
+                        console.error('Polling error:', err);
+                    }
+                }, 1000);
+            } else if (data.success) {
+                uploadStatus.innerHTML = `✅ Thành công! Xem video tại: <a href="https://youtu.be/${data.videoId}" target="_blank" style="color:#a5b4fc; font-weight: 600;">https://youtu.be/${data.videoId}</a>`;
+                newBtnUpload.disabled = false;
             } else {
                 throw new Error(data.error || 'Lỗi không xác định');
             }
@@ -466,6 +488,355 @@ function initYoutubeSection(sessionId, metadata) {
             newBtnUpload.disabled = false;
         }
     });
+}
+
+// --- YouTube Tab 4 Full Manager ---
+function initYoutubeTab() {
+    const authDisconnected = document.getElementById('ytTabAuthDisconnected');
+    const authConnected = document.getElementById('ytTabAuthConnected');
+    const btnConnect = document.getElementById('btnYtTabConnect');
+    const btnLogout = document.getElementById('btnYtTabLogout');
+    
+    const channelAvatar = document.getElementById('ytTabChannelAvatar');
+    const channelAvatarPlaceholder = document.getElementById('ytTabChannelAvatarPlaceholder');
+    const channelTitle = document.getElementById('ytTabChannelTitle');
+    const channelSubs = document.getElementById('ytTabChannelSubscribers');
+
+    const videoSelect = document.getElementById('ytTabVideoSelect');
+    const btnRefreshVideos = document.getElementById('btnYtTabRefreshVideos');
+    const playerWrapper = document.getElementById('ytTabPlayerWrapper');
+    const player = document.getElementById('ytTabPlayer');
+
+    const titleInput = document.getElementById('ytTabTitle');
+    const descInput = document.getElementById('ytTabDescription');
+    const tagsInput = document.getElementById('ytTabTags');
+    const publishMode = document.getElementById('ytTabPublishMode');
+    const scheduleBox = document.getElementById('ytTabScheduleTimeBox');
+    const publishAtInput = document.getElementById('ytTabPublishAt');
+    const btnSubmit = document.getElementById('btnYtTabSubmit');
+
+    const progressWrap = document.getElementById('ytTabProgressWrap');
+    const progressStatus = document.getElementById('ytTabProgressStatus');
+    const progressPct = document.getElementById('ytTabProgressPct');
+    const progressBar = document.getElementById('ytTabProgressBar');
+    const successAlert = document.getElementById('ytTabSuccessAlert');
+    const successMessage = document.getElementById('ytTabSuccessMessage');
+    const watchLink = document.getElementById('ytTabWatchLink');
+    const historyList = document.getElementById('ytTabHistoryList');
+
+    if (!videoSelect) return;
+
+    let availableVideos = [];
+
+    function updateMinScheduleTime() {
+        if (!publishAtInput) return;
+        const now = new Date(Date.now() + 5 * 60 * 1000);
+        const pad = (n) => String(n).padStart(2, '0');
+        const formatted = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        publishAtInput.min = formatted;
+        if (!publishAtInput.value) {
+            publishAtInput.value = formatted;
+        }
+    }
+    updateMinScheduleTime();
+
+    if (publishMode) {
+        publishMode.addEventListener('change', () => {
+            const isSchedule = publishMode.value === 'schedule';
+            scheduleBox.style.display = isSchedule ? 'block' : 'none';
+            if (isSchedule) {
+                updateMinScheduleTime();
+                btnSubmit.innerHTML = '<i data-lucide="clock" class="btn-icon"></i> Xác Nhận Lên Lịch Đăng YouTube';
+            } else {
+                btnSubmit.innerHTML = '<i data-lucide="upload-cloud" class="btn-icon"></i> Bắt Đầu Đăng Lên YouTube';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    }
+
+    async function checkAuth() {
+        try {
+            const res = await fetch('/api/youtube/status');
+            const data = await res.json();
+            if (data.authenticated) {
+                authDisconnected.style.display = 'none';
+                authConnected.style.display = 'block';
+
+                if (data.channel) {
+                    channelTitle.textContent = data.channel.title || 'Kênh YouTube của bạn';
+                    const subs = Number(data.channel.subscriberCount);
+                    channelSubs.textContent = !isNaN(subs) ? `${subs.toLocaleString('vi-VN')} người đăng ký` : 'Đã xác thực tài khoản';
+                    if (data.channel.thumbnail) {
+                        channelAvatar.src = data.channel.thumbnail;
+                        channelAvatar.style.display = 'block';
+                        channelAvatarPlaceholder.style.display = 'none';
+                    }
+                } else {
+                    channelTitle.textContent = 'Kênh YouTube của bạn';
+                    channelSubs.textContent = 'Đã xác thực tài khoản';
+                }
+            } else {
+                authDisconnected.style.display = 'block';
+                authConnected.style.display = 'none';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (e) {
+            console.error('Failed to check YT auth status in Tab 4', e);
+        }
+    }
+
+    if (btnConnect) {
+        btnConnect.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/youtube/auth');
+                const data = await res.json();
+                if (data.url) {
+                    const w = 520;
+                    const h = 640;
+                    const left = (screen.width / 2) - (w / 2);
+                    const top = (screen.height / 2) - (h / 2);
+                    window.open(data.url, 'YouTubeLogin', `width=${w},height=${h},top=${top},left=${left}`);
+                }
+            } catch (e) {
+                alert('Lỗi lấy link đăng nhập: ' + e.message);
+            }
+        });
+    }
+
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            if (!confirm('Bạn có chắc chắn muốn ngắt kết nối tài khoản YouTube?')) return;
+            try {
+                await fetch('/api/youtube/logout', { method: 'POST' });
+                checkAuth();
+            } catch (e) {
+                console.error('Logout error', e);
+            }
+        });
+    }
+
+    window.addEventListener('message', (event) => {
+        if (event.data === 'youtube_auth_success') {
+            checkAuth();
+        }
+    });
+
+    async function loadVideos() {
+        try {
+            videoSelect.innerHTML = '<option value="">-- Đang tải danh sách... --</option>';
+            const res = await fetch('/api/youtube/videos');
+            const data = await res.json();
+            availableVideos = data.videos || [];
+
+            if (availableVideos.length === 0) {
+                videoSelect.innerHTML = '<option value="">-- Chưa có video nào trong thư mục output --</option>';
+                playerWrapper.style.display = 'none';
+                return;
+            }
+
+            videoSelect.innerHTML = '<option value="">-- Chọn một video đã render --</option>';
+            availableVideos.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.sessionId;
+                const d = new Date(v.createdAt).toLocaleString('vi-VN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                opt.textContent = `${v.title} (${v.sizeMb}MB - ${d})`;
+                videoSelect.appendChild(opt);
+            });
+        } catch (e) {
+            console.error('Failed to load videos:', e);
+            videoSelect.innerHTML = '<option value="">-- Lỗi khi tải danh sách video --</option>';
+        }
+    }
+
+    if (btnRefreshVideos) {
+        btnRefreshVideos.addEventListener('click', () => {
+            loadVideos();
+        });
+    }
+
+    videoSelect.addEventListener('change', () => {
+        const sessionId = videoSelect.value;
+        if (!sessionId) {
+            playerWrapper.style.display = 'none';
+            player.pause();
+            return;
+        }
+
+        const video = availableVideos.find(v => v.sessionId === sessionId);
+        if (video) {
+            playerWrapper.style.display = 'block';
+            player.src = video.videoUrl;
+            player.load();
+
+            if (video.metadata) {
+                if (video.metadata.title) titleInput.value = video.metadata.title;
+                let descText = video.metadata.description || '';
+                if (video.metadata.hashtags && video.metadata.hashtags.length > 0) {
+                    descText += '\n\n' + video.metadata.hashtags.join(' ');
+                }
+                if (video.metadata.seo_keywords && video.metadata.seo_keywords.length > 0) {
+                    descText += '\n\nTừ khóa SEO: ' + video.metadata.seo_keywords.join(', ');
+                }
+                descInput.value = descText.trim();
+                if (video.metadata.seo_keywords && Array.isArray(video.metadata.seo_keywords)) {
+                    tagsInput.value = video.metadata.seo_keywords.join(', ');
+                } else if (video.metadata.tags) {
+                    tagsInput.value = Array.isArray(video.metadata.tags) ? video.metadata.tags.join(', ') : video.metadata.tags;
+                }
+            } else if (!titleInput.value) {
+                titleInput.value = video.title;
+            }
+        }
+    });
+
+    async function loadHistory() {
+        try {
+            const res = await fetch('/api/youtube/history');
+            const data = await res.json();
+            const list = data.history || [];
+            if (list.length === 0) {
+                historyList.innerHTML = '<p class="upload-hint" style="text-align: center; margin: 12px 0;">Chưa có video nào được đăng từ tool này.</p>';
+                return;
+            }
+
+            historyList.innerHTML = '';
+            list.forEach(item => {
+                const el = document.createElement('div');
+                el.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; gap: 12px;';
+                
+                const isSched = item.status === 'SCHEDULED';
+                const statusBadge = isSched 
+                    ? '<span style="background: rgba(245,158,11,0.15); color: #f59e0b; font-size: 0.75em; padding: 2px 8px; border-radius: 999px; font-weight: 700; border: 1px solid rgba(245,158,11,0.3);">🕐 ĐÃ HẸN GIỜ</span>'
+                    : '<span style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 0.75em; padding: 2px 8px; border-radius: 999px; font-weight: 700; border: 1px solid rgba(16,185,129,0.3);">✅ ' + item.status + '</span>';
+
+                const timeStr = item.publishAt 
+                    ? `Lịch phát: ${new Date(item.publishAt).toLocaleString('vi-VN')}`
+                    : `Đã đăng: ${new Date(item.uploadedAt).toLocaleString('vi-VN')}`;
+
+                el.innerHTML = `
+                    <div style="min-width: 0; flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
+                            <strong style="font-size: 0.92em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.title || 'Video YouTube'}</strong>
+                            ${statusBadge}
+                        </div>
+                        <p style="margin: 0; font-size: 0.78em; color: var(--text-secondary);">${timeStr}</p>
+                    </div>
+                    <a href="${item.youtubeUrl}" target="_blank" class="btn-secondary-action" style="padding: 6px 12px; font-size: 0.8em; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">
+                        <i data-lucide="external-link" class="btn-icon"></i> Xem
+                    </a>
+                `;
+                historyList.appendChild(el);
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (e) {
+            console.error('Failed to load YT history:', e);
+        }
+    }
+
+    btnSubmit.addEventListener('click', async () => {
+        const sessionId = videoSelect.value;
+        if (!sessionId) {
+            alert('Vui lòng chọn một video đã render!');
+            return;
+        }
+        const title = titleInput.value.trim();
+        if (!title) {
+            alert('Vui lòng nhập tiêu đề cho video!');
+            return;
+        }
+
+        const mode = publishMode.value;
+        let publishAt = null;
+        let privacyStatus = mode;
+
+        if (mode === 'schedule') {
+            const schedVal = publishAtInput.value;
+            if (!schedVal) {
+                alert('Vui lòng chọn ngày và giờ phát hành!');
+                return;
+            }
+            publishAt = new Date(schedVal).toISOString();
+            privacyStatus = 'private';
+        }
+
+        btnSubmit.disabled = true;
+        progressWrap.style.display = 'block';
+        successAlert.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressPct.textContent = '0%';
+        progressStatus.textContent = 'Đang khởi tạo tải lên YouTube...';
+
+        try {
+            const payload = {
+                sessionId,
+                title,
+                description: descInput.value.trim(),
+                tags: tagsInput.value.trim(),
+                privacyStatus,
+                publishAt
+            };
+
+            const res = await fetch('/api/youtube/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Lỗi gửi yêu cầu upload');
+            }
+
+            const data = await res.json();
+            const jobId = data.jobId;
+
+            const pollInterval = setInterval(async () => {
+                try {
+                    const progRes = await fetch(`/api/youtube/upload-progress/${jobId}`);
+                    if (!progRes.ok) return;
+                    const job = await progRes.json();
+
+                    progressBar.style.width = `${job.progress}%`;
+                    progressPct.textContent = `${job.progress}%`;
+
+                    if (job.status === 'completed') {
+                        clearInterval(pollInterval);
+                        btnSubmit.disabled = false;
+                        progressStatus.textContent = 'Tải lên hoàn tất 100%!';
+                        
+                        successAlert.style.display = 'block';
+                        const isScheduled = !!job.publishAt;
+                        if (isScheduled) {
+                            successMessage.textContent = `Video "${job.title}" đã được tải lên YouTube và lên lịch phát hành vào lúc: ${new Date(job.publishAt).toLocaleString('vi-VN')}!`;
+                        } else {
+                            successMessage.textContent = `Video "${job.title}" đã được xuất bản thành công lên kênh YouTube của bạn!`;
+                        }
+                        watchLink.href = `https://youtube.com/watch?v=${job.videoId}`;
+                        loadHistory();
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    } else if (job.status === 'failed') {
+                        clearInterval(pollInterval);
+                        btnSubmit.disabled = false;
+                        progressStatus.textContent = `Lỗi: ${job.error}`;
+                        alert('Upload thất bại: ' + job.error);
+                    } else {
+                        progressStatus.textContent = `Đang tải video lên YouTube... ${job.progress}%`;
+                    }
+                } catch (err) {
+                    console.error('Polling error', err);
+                }
+            }, 1000);
+
+        } catch (e) {
+            btnSubmit.disabled = false;
+            progressWrap.style.display = 'none';
+            alert('Lỗi: ' + e.message);
+        }
+    });
+
+    checkAuth();
+    loadVideos();
+    loadHistory();
 }
 
 // --- OpenAI API Debug Tooling ---
@@ -631,6 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     initAIAssistant();
     initImageGenerator();
+    initYoutubeTab();
 });
 checkOpenAIApi(); // Run immediately too in case DOM is already loaded
 checkGeminiApi(); // Run immediately too in case DOM is already loaded

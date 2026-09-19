@@ -980,6 +980,179 @@ app.get('/api/debug-gemini', async (req, res) => {
   }
 });
 
+// ── YouTube Integration Endpoints ──────────────────────────────────────────
+
+const youtubeUploadJobs = {};
+
+app.get('/api/youtube/status', async (req, res) => {
+  try {
+    const authenticated = youtubeService.checkAuthStatus();
+    let channel = null;
+    if (authenticated) {
+      channel = await youtubeService.getChannelInfo();
+    }
+    res.json({ authenticated, channel });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Hỗ trợ cả /api/youtube/auth và /api/youtube/auth-url
+const handleAuthUrl = (req, res) => {
+  try {
+    const url = youtubeService.getAuthUrl();
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+app.get('/api/youtube/auth', handleAuthUrl);
+app.get('/api/youtube/auth-url', handleAuthUrl);
+
+app.get('/oauth2callback', async (req, res) => {
+  try {
+    const { code, error } = req.query;
+    if (error) {
+      return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Lỗi OAuth</title></head><body style="background:#0f172a;color:#f87171;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><h2>❌ Lỗi xác thực YouTube: ${error}</h2><p>Vui lòng thử lại.</p></div></body></html>`);
+    }
+    if (!code) {
+      return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Lỗi OAuth</title></head><body style="background:#0f172a;color:#f87171;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><h2>❌ Không tìm thấy authorization code</h2></div></body></html>`);
+    }
+    await youtubeService.handleCallback(code);
+    return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kết nối YouTube thành công</title></head><body style="background:#0f172a;color:#38bdf8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><h2 style="color:#4ade80;">✅ Kết nối tài khoản YouTube thành công!</h2><p style="color:#94a3b8;">Cửa sổ này sẽ tự động đóng sau giây lát...</p></div><script>if (window.opener) { window.opener.postMessage('youtube_auth_success', '*'); setTimeout(() => window.close(), 1200); } else { setTimeout(() => { window.location.href = '/?youtube=connected'; }, 1500); }</script></body></html>`);
+  } catch (err) {
+    console.error('OAuth Callback Error:', err);
+    return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Lỗi OAuth</title></head><body style="background:#0f172a;color:#f87171;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><h2>❌ Lỗi: ${err.message}</h2></div></body></html>`);
+  }
+});
+
+app.post('/api/youtube/logout', (req, res) => {
+  try {
+    youtubeService.logout();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/youtube/videos', (req, res) => {
+  try {
+    if (!fs.existsSync(outputDir)) {
+      return res.json({ videos: [] });
+    }
+    const entries = fs.readdirSync(outputDir, { withFileTypes: true });
+    const videos = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const videoFile = path.join(outputDir, entry.name, 'output.mp4');
+        if (fs.existsSync(videoFile)) {
+          const stats = fs.statSync(videoFile);
+          const session = sessions[entry.name];
+          let title = `Video ${entry.name}`;
+          let metadata = null;
+          if (session && session.metadata) {
+            metadata = session.metadata;
+            if (metadata.title) title = metadata.title;
+          }
+
+          videos.push({
+            sessionId: entry.name,
+            title: title,
+            filename: 'output.mp4',
+            videoUrl: `/download/${entry.name}/output.mp4`,
+            sizeMb: (stats.size / (1024 * 1024)).toFixed(1),
+            createdAt: stats.mtime.toISOString(),
+            metadata: metadata
+          });
+        }
+      }
+    }
+
+    videos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json({ videos });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/youtube/upload', async (req, res) => {
+  try {
+    const { sessionId, title, description, tags, privacyStatus, publishAt } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Thiếu sessionId của video.' });
+    }
+
+    const videoPath = path.join(outputDir, sessionId, 'output.mp4');
+    if (!fs.existsSync(videoPath)) {
+      return res.status(404).json({ error: 'Không tìm thấy file output.mp4 của session này.' });
+    }
+
+    const jobId = `yt-upload-${Date.now()}`;
+    youtubeUploadJobs[jobId] = {
+      id: jobId,
+      sessionId,
+      title: title || 'Video AI',
+      progress: 0,
+      status: 'uploading',
+      error: null,
+      result: null,
+      publishAt: publishAt || null,
+      createdAt: new Date().toISOString()
+    };
+
+    youtubeService.uploadVideo(videoPath, {
+      title,
+      description,
+      tags,
+      privacyStatus,
+      publishAt
+    }, (progress) => {
+      if (youtubeUploadJobs[jobId]) {
+        youtubeUploadJobs[jobId].progress = progress;
+      }
+    }).then((result) => {
+      if (youtubeUploadJobs[jobId]) {
+        youtubeUploadJobs[jobId].status = 'completed';
+        youtubeUploadJobs[jobId].progress = 100;
+        youtubeUploadJobs[jobId].result = result;
+        youtubeUploadJobs[jobId].videoId = result.id;
+      }
+    }).catch((err) => {
+      console.error(`[YouTube Upload Job ${jobId}] Failed:`, err);
+      if (youtubeUploadJobs[jobId]) {
+        youtubeUploadJobs[jobId].status = 'failed';
+        youtubeUploadJobs[jobId].error = err.message;
+      }
+    });
+
+    res.status(202).json({
+      success: true,
+      jobId,
+      message: 'Upload video lên YouTube đã bắt đầu.'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/youtube/upload-progress/:jobId', (req, res) => {
+  const job = youtubeUploadJobs[req.params.jobId];
+  if (!job) {
+    return res.status(404).json({ error: 'Không tìm thấy job upload.' });
+  }
+  res.json(job);
+});
+
+app.get('/api/youtube/history', (req, res) => {
+  try {
+    const history = youtubeService.getHistory();
+    res.json({ history });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
