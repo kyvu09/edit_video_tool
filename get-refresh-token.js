@@ -34,22 +34,32 @@ rl.question('\nNhập mã code Bước 1: ', async (code1) => {
         const authUrl2 = oauth2Client.generateAuthUrl({
             access_type: 'offline',
             prompt: 'consent',
-            include_granted_scopes: true,
             scope: ['https://www.googleapis.com/auth/youtube.upload'],
         });
 
         console.log('\n=== BƯỚC 2/2: CẤP QUYỀN YOUTUBE ===');
-        console.log('1. Mở tiếp đường link sau để cấp quyền YouTube:');
+        console.log('LƯU Ý: VÌ BẠN ĐÃ CẤP QUYỀN DRIVE Ở TÀI KHOẢN TRƯỚC, LẦN NÀY HÃY CHỌN MỘT TÀI KHOẢN GOOGLE / YOUTUBE KHÁC NHÉ!');
+        console.log('1. Mở đường link sau để cấp quyền YouTube:');
         console.log('\n' + authUrl2 + '\n');
         console.log('2. Copy mã đằng sau chữ "code=" trên thanh địa chỉ và dán vào đây.');
 
         rl.question('\nNhập mã code Bước 2: ', async (code2) => {
             try {
-                const res = await oauth2Client.getToken(decodeURIComponent(code2));
-                console.log('\n=== THÀNH CÔNG! ĐÂY LÀ REFRESH TOKEN CUỐI CÙNG CỦA BẠN ===\n');
+                // Ta phải tạo một oauth client mới hoàn toàn để không bị dính credentials cũ
+                const oauth2ClientYoutube = new google.auth.OAuth2(
+                    process.env.GOOGLE_CLIENT_ID,
+                    process.env.GOOGLE_CLIENT_SECRET,
+                    'http://localhost:3000/oauth2callback'
+                );
+                
+                const res = await oauth2ClientYoutube.getToken(decodeURIComponent(code2));
+                console.log('\n=== THÀNH CÔNG! ĐÂY LÀ 2 REFRESH TOKEN CỦA BẠN ===\n');
+                console.log('GOOGLE_DRIVE_REFRESH_TOKEN (Tài khoản 1):');
+                console.log(tokens.refresh_token);
+                console.log('\nYOUTUBE_REFRESH_TOKEN (Tài khoản 2):');
                 console.log(res.tokens.refresh_token);
                 console.log('\n=================================================');
-                console.log('Hãy copy mã này và điền vào GitHub Secrets nhé.');
+                console.log('Hãy copy 2 mã này và điền vào GitHub Secrets nhé.');
             } catch (err2) {
                 console.error('Lỗi ở Bước 2:', err2.message);
             }
