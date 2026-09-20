@@ -146,7 +146,7 @@ window.uploadVideoToDrive = async function(file, category, customFolderName, onP
       },
       body: JSON.stringify({
         name: file.name,
-        parents: [folderId],
+        parents: [targetFolderId],
         mimeType: file.type,
       }),
     }
