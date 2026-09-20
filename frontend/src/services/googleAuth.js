@@ -49,6 +49,10 @@ export function loadGisScript(clientId) {
       tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: SCOPES,
+        // Drive login is intentionally independent from the YouTube worker
+        // credentials. Do not merge previously granted YouTube scopes into
+        // this request because Google rejects that scope combination.
+        include_granted_scopes: false,
         callback: (response) => {
           if (response.error) {
             console.error('[AUTH] Error:', response.error);
