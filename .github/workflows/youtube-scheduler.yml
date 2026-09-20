@@ -2,8 +2,8 @@ name: YouTube Scheduler
 
 on:
   schedule:
-    # Chạy mỗi 5 phút
-    - cron: '*/5 * * * *'
+    # Chạy mỗi 1 giờ (phút thứ 0 của mỗi giờ)
+    - cron: '0 * * * *'
 
   # Cho phép chạy thủ công từ tab Actions trên GitHub
   workflow_dispatch:
