@@ -119,12 +119,12 @@ export default function LibraryPage() {
               </div>
 
               <div className="flex gap-2 flex-shrink-0">
-                {(video.status === 'STORED' || video.status === 'UPLOAD_FAILED') && (
+                {(video.status === 'STORED' || video.status === 'UPLOAD_FAILED' || video.status === 'SCHEDULED') && (
                   <button
                     onClick={() => navigate('/schedule', { state: { videoId: video.id, title: video.title } })}
                     className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                   >
-                    🕐 Lên lịch
+                    🕐 Lên lịch / Sửa
                   </button>
                 )}
                 <button

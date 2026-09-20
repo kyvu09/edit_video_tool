@@ -18,8 +18,8 @@ export default function SchedulePage() {
     const loadVideos = async () => {
       try {
         const { videos } = await readMetadata();
-        // Chỉ hiện video STORED hoặc UPLOAD_FAILED (có thể retry)
-        setVideos(videos.filter(v => v.status === 'STORED' || v.status === 'UPLOAD_FAILED'));
+        // Hiện video STORED, UPLOAD_FAILED (có thể retry) và SCHEDULED (để sửa giờ)
+        setVideos(videos.filter(v => v.status === 'STORED' || v.status === 'UPLOAD_FAILED' || v.status === 'SCHEDULED'));
       } catch (err) {
         console.error(err);
       }
@@ -30,34 +30,40 @@ export default function SchedulePage() {
   const handleSchedule = async (e) => {
     e.preventDefault();
     if (!selectedVideoId || !scheduledAt) return;
+    await processSchedule(new Date(scheduledAt).toISOString(), false);
+  };
 
+  const handlePublishNow = async () => {
+    if (!selectedVideoId) return;
+    // Set to 5 minutes ago so it runs immediately
+    const pastTime = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    await processSchedule(pastTime, true);
+  };
+
+  const processSchedule = async (timeIso, isPublishNow) => {
     setLoading(true);
     setError('');
     setSuccess(null);
 
     try {
-      // Đọc metadata hiện tại
       const metadata = await readMetadata();
-
-      // Tìm video và cập nhật trạng thái → SCHEDULED
       const video = metadata.videos.find(v => v.id === selectedVideoId);
       if (!video) throw new Error('Video not found in metadata');
 
       video.status = 'SCHEDULED';
-      video.scheduledAt = new Date(scheduledAt).toISOString();
+      video.scheduledAt = timeIso;
       video.privacyStatus = privacyStatus;
       video.updatedAt = new Date().toISOString();
-      video.errorMessage = null; // Xóa lỗi cũ nếu retry
+      video.errorMessage = null;
 
-      // Ghi lại metadata lên Drive
       await writeMetadata(metadata);
 
       setSuccess({
         title: video.title,
         scheduledAt: video.scheduledAt,
+        isPublishNow
       });
 
-      // Xóa video vừa schedule khỏi dropdown
       setVideos(vs => vs.filter(v => v.id !== selectedVideoId));
       setSelectedVideoId('');
     } catch (err) {
@@ -94,18 +100,30 @@ export default function SchedulePage() {
       {success && (
         <div className="bg-green-900/50 border border-green-600 rounded-xl p-6 text-center mb-6">
           <div className="text-4xl mb-2">🎉</div>
-          <h2 className="text-xl font-bold text-green-400">Đã lên lịch!</h2>
+          <h2 className="text-xl font-bold text-green-400">
+            {success.isPublishNow ? 'Đã kích hoạt Đăng Ngay!' : 'Đã lên lịch!'}
+          </h2>
           <p className="text-gray-300 mt-2">
-            <strong>"{success.title}"</strong> sẽ được đăng lên YouTube vào:{' '}
-            <strong>{new Date(success.scheduledAt).toLocaleString('vi-VN')}</strong>
+            <strong>"{success.title}"</strong> {success.isPublishNow ? 'đã sẵn sàng để đăng ngay lập tức.' : `sẽ được đăng lên YouTube vào: ${new Date(success.scheduledAt).toLocaleString('vi-VN')}`}
           </p>
-          <p className="text-gray-500 text-sm mt-2">(Sai số tối đa ±5 phút do GitHub Actions cron)</p>
-          <button
-            onClick={() => setSuccess(null)}
-            className="mt-4 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
-          >
-            Lên lịch thêm
-          </button>
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <a 
+              href="https://github.com/kyvu09/edit_video_tool/actions/workflows/youtube-scheduler.yml" 
+              target="_blank" rel="noreferrer"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium inline-block transition-colors"
+            >
+              🚀 Bấm vào đây để Run Workflow ngay
+            </a>
+            <p className="text-sm text-gray-400 max-w-sm">
+              (Hoặc bạn có thể kệ nó, GitHub sẽ tự động lôi ra đăng vào đầu giờ tiếp theo).
+            </p>
+            <button
+              onClick={() => setSuccess(null)}
+              className="mt-2 text-gray-400 hover:text-white underline text-sm"
+            >
+              Lên lịch video khác
+            </button>
+          </div>
         </div>
       )}
 
@@ -171,13 +189,23 @@ export default function SchedulePage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading || !selectedVideoId || !scheduledAt}
-            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
-          >
-            {loading ? '⏳ Đang lưu...' : '🕐 Lên lịch đăng YouTube'}
-          </button>
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              disabled={loading || !selectedVideoId || !scheduledAt}
+              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
+            >
+              {loading ? '⏳ Đang lưu...' : '🕐 Lên lịch (Chờ Bot)'}
+            </button>
+            <button
+              type="button"
+              onClick={handlePublishNow}
+              disabled={loading || !selectedVideoId}
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
+            >
+              ⚡ Đăng Ngay
+            </button>
+          </div>
         </form>
       )}
     </div>
