@@ -6,7 +6,7 @@
  */
 
 const { google } = require('googleapis');
-const { getAuthClient } = require('./driveService');
+const { getYoutubeAuthClient } = require('./driveService');
 
 /**
  * Upload video lên YouTube từ readable stream.
@@ -20,7 +20,7 @@ const { getAuthClient } = require('./driveService');
  * @returns {string} YouTube Video ID
  */
 async function uploadToYouTube({ videoStream, title, description, tags, privacyStatus = 'public' }) {
-  const auth = getAuthClient();
+  const auth = getYoutubeAuthClient();
   const youtube = google.youtube({ version: 'v3', auth });
 
   console.log(`[YOUTUBE] Uploading: "${title}"...`);

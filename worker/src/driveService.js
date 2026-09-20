@@ -12,16 +12,32 @@ const FOLDER_NAME = 'EditVideoTool';
 const METADATA_FILENAME = 'metadata.json';
 
 /**
- * Tạo OAuth2 client đã xác thực từ refresh_token (lấy từ GitHub Secrets).
+ * Tạo OAuth2 client cho Google Drive
  */
-function getAuthClient() {
+function getDriveAuthClient() {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.YOUTUBE_CLIENT_ID, // Vẫn dùng chung Client ID
+    process.env.YOUTUBE_CLIENT_SECRET,
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN, // Token của tài khoản Drive
+  });
+
+  return oauth2Client;
+}
+
+/**
+ * Tạo OAuth2 client cho YouTube
+ */
+function getYoutubeAuthClient() {
   const oauth2Client = new google.auth.OAuth2(
     process.env.YOUTUBE_CLIENT_ID,
     process.env.YOUTUBE_CLIENT_SECRET,
   );
 
   oauth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+    refresh_token: process.env.YOUTUBE_REFRESH_TOKEN, // Token của tài khoản YouTube
   });
 
   return oauth2Client;
@@ -70,7 +86,7 @@ async function getOrCreateFolder(drive) {
  * @returns {{ fileId: string|null, videos: Array }}
  */
 async function readMetadata() {
-  const auth = getAuthClient();
+  const auth = getDriveAuthClient();
   const drive = getDrive(auth);
   const folderId = await getOrCreateFolder(drive);
 
@@ -104,7 +120,7 @@ async function readMetadata() {
  * Ghi metadata.json lên Google Drive (tạo mới hoặc cập nhật).
  */
 async function writeMetadata({ fileId, folderId, videos }) {
-  const auth = getAuthClient();
+  const auth = getDriveAuthClient();
   const drive = getDrive(auth);
 
   const media = {
@@ -144,7 +160,7 @@ async function writeMetadata({ fileId, folderId, videos }) {
  * @returns {ReadableStream}
  */
 async function downloadVideoStream(driveFileId) {
-  const auth = getAuthClient();
+  const auth = getDriveAuthClient();
   const drive = getDrive(auth);
 
   const res = await drive.files.get({
@@ -158,7 +174,8 @@ async function downloadVideoStream(driveFileId) {
 }
 
 module.exports = {
-  getAuthClient,
+  getDriveAuthClient,
+  getYoutubeAuthClient,
   readMetadata,
   writeMetadata,
   downloadVideoStream,
