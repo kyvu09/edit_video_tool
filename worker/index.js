@@ -11,7 +11,7 @@
  * 5. Cập nhật metadata.json (SCHEDULED → PUBLISHED hoặc UPLOAD_FAILED)
  */
 
-const { readMetadata, writeMetadata, downloadVideoStream } = require('./src/driveService');
+const { readMetadata, writeMetadata, writeVideoInfo, downloadVideoStream } = require('./src/driveService');
 const { uploadToYouTube } = require('./src/youtubeService');
 
 async function main() {
@@ -83,6 +83,15 @@ async function main() {
       video.failedAt = new Date().toISOString();
       video.updatedAt = new Date().toISOString();
       hasChanges = true;
+    }
+
+    // Cập nhật info.json trong thư mục con nếu có
+    if (video.driveFolderId) {
+      try {
+        await writeVideoInfo(video, video.driveFolderId);
+      } catch (e) {
+        console.error(`[WORKER] Failed to update subfolder info.json: ${e.message}`);
+      }
     }
   }
 

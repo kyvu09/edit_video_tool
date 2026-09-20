@@ -61,10 +61,10 @@
                 </button>
 
                 <button class="tab-btn" data-tab="youtube-publish-tab">
-                    <div class="tab-btn-icon" style="color: #ef4444;"><i data-lucide="youtube"></i></div>
+                    <div class="tab-btn-icon" style="color: #10b981;"><i data-lucide="cloud-upload"></i></div>
                     <div class="tab-btn-text">
-                        <span class="tab-btn-title">Đăng YouTube</span>
-                        <span class="tab-btn-desc">Upload & lên lịch phát sóng</span>
+                        <span class="tab-btn-title">Lên Lịch Drive</span>
+                        <span class="tab-btn-desc">Upload Drive & GitHub Actions</span>
                     </div>
                     <span class="step-num">4</span>
                 </button>
@@ -799,6 +799,71 @@
                         <button onclick="location.reload()" class="btn-secondary-action"><i data-lucide="refresh-cw" class="btn-icon"></i> Tạo Video Mới</button>
                     </div>
 
+                    <!-- Drive Upload & Schedule -->
+                    <div id="driveUploadSection" class="yt-upload-section" style="margin-top: 20px; border-color: rgba(16, 185, 129, 0.2); background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);">
+                        <h3 style="color: #10b981;"><i data-lucide="cloud-upload" class="btn-icon"></i> Upload Google Drive & Lên Lịch</h3>
+                        
+                        <div id="driveAuthSection">
+                            <p class="upload-hint" style="margin-bottom: 12px;">Đăng nhập Google để lưu video lên Drive và hẹn giờ đăng (via GitHub Actions).</p>
+                            <button id="btnDriveConnect" type="button" class="btn-secondary-action"
+                                style="background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #6ee7b7;">
+                                <i data-lucide="log-in" class="btn-icon"></i> Đăng nhập Google
+                            </button>
+                        </div>
+
+                        <div id="driveFormSection" style="display: none;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; margin-top: 4px;">
+                                <p style="color: var(--success); font-size: 0.88em; font-weight: 600;">✅ Đã kết nối Google Drive</p>
+                                <button id="btnDriveLogout" type="button" class="btn-secondary-action"
+                                    style="padding: 4px 10px; font-size: 0.78em; border-color: var(--border-subtle);">Đăng xuất</button>
+                            </div>
+                            
+                            <label class="yt-form-label">Tiêu đề video</label>
+                            <input type="text" id="driveTitle" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 10px;">
+
+                            <label class="yt-form-label">Mô tả</label>
+                            <textarea id="driveDescription" rows="4" class="custom-textarea" style="margin-top: 4px; margin-bottom: 10px;"></textarea>
+
+                            <label class="yt-form-label">Tags (cách nhau bằng dấu phẩy)</label>
+                            <input type="text" id="driveTags" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 10px;">
+
+                            <label class="yt-form-label">Phân loại video (Drive)</label>
+                            <select id="driveVideoCategory" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 10px;">
+                                <option value="long video" selected>Long video</option>
+                                <option value="short video">Short video</option>
+                            </select>
+
+                            <label class="yt-form-label">Tên thư mục con (VD: video 1)</label>
+                            <input type="text" id="driveFolderName" class="custom-textarea" placeholder="Để trống nếu không muốn tạo thư mục con" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 10px;">
+
+                            <label class="yt-form-label" style="color: #60a5fa; margin-top: 0; font-weight: 700;">📅 Chọn Ngày & Giờ lên lịch (GitHub Actions):</label>
+                            <input type="datetime-local" id="drivePublishAt" class="custom-textarea" style="padding: 10px 14px; margin-top: 6px; margin-bottom: 16px; background: rgba(0,0,0,0.3);">
+
+                            <label class="yt-form-label">Quyền riêng tư (khi đăng YouTube)</label>
+                            <select id="drivePrivacy" style="margin-top: 4px; margin-bottom: 16px;">
+                                <option value="public" selected>🌐 Công khai (Public)</option>
+                                <option value="unlisted">🔗 Không công khai (Unlisted)</option>
+                                <option value="private">🔒 Riêng tư (Private)</option>
+                            </select>
+
+                            <button id="btnDriveUpload" type="button" class="btn-submit btn-submit-large"
+                                style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 6px 22px rgba(16,185,129,0.35);">
+                                <i data-lucide="cloud-upload" class="btn-icon"></i> Upload Drive & Lên Lịch
+                            </button>
+
+                            <div id="driveUploadProgress" style="display: none; margin-top: 16px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 4px; color: var(--text-secondary);">
+                                    <span id="driveUploadStatusText">Đang xử lý...</span>
+                                    <span id="driveUploadPercent">0%</span>
+                                </div>
+                                <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                                    <div id="driveUploadProgressBar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.2s;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
                     <!-- YouTube Upload -->
                     <div id="youtubeUploadSection" class="yt-upload-section">
                         <h3><i data-lucide="youtube" class="btn-icon"></i> Upload lên YouTube</h3>
@@ -878,31 +943,31 @@
                 <div id="youtube-publish-tab" class="tab-content">
                     <!-- Page Header -->
                     <div class="page-header">
-                        <div class="page-header-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i data-lucide="youtube"></i></div>
+                        <div class="page-header-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i data-lucide="cloud-upload"></i></div>
                         <div class="page-header-body">
-                            <h2>Đăng & Lên Lịch YouTube</h2>
-                            <p>Quản lý tài khoản YouTube, chọn video đã render trong tool hoặc tải lên file mới, xuất bản ngay hoặc đặt lịch phát hành tự động.</p>
+                            <h2>Lên Lịch Đăng (qua Drive)</h2>
+                            <p>Đăng nhập Google, chọn video đã render, và đặt lịch. Video sẽ được lưu lên Drive và tự động đăng qua GitHub Actions.</p>
                         </div>
                     </div>
 
                     <div class="ai-assistant-container">
-                        <!-- Card 1: Tài khoản YouTube -->
+                        <!-- Card 1: Tài khoản Google -->
                         <div class="section-card">
-                            <div class="section-card-header" style="background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.05)); border-color: rgba(239,68,68,0.25);">
-                                <span class="section-card-header-icon" style="color: #ef4444;"><i data-lucide="shield-check"></i></span>
-                                <span class="section-card-header-title">Tài Khoản Kênh YouTube</span>
+                            <div class="section-card-header" style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05)); border-color: rgba(16,185,129,0.25);">
+                                <span class="section-card-header-icon" style="color: #10b981;"><i data-lucide="shield-check"></i></span>
+                                <span class="section-card-header-title">Tài Khoản Google Drive</span>
                             </div>
                             <div class="section-card-body">
                                 <!-- Trạng thái: Chưa kết nối -->
                                 <div id="ytTabAuthDisconnected" style="display: none; padding: 12px 0;">
                                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
                                         <div>
-                                            <p style="font-weight: 600; color: #f87171; margin-bottom: 4px;">⚠️ Chưa kết nối tài khoản YouTube</p>
-                                            <p class="upload-hint" style="margin: 0;">Kết nối Google Account có kênh YouTube của bạn để cấp quyền đăng video tự động.</p>
+                                            <p style="font-weight: 600; color: #f87171; margin-bottom: 4px;">⚠️ Chưa kết nối tài khoản Google</p>
+                                            <p class="upload-hint" style="margin: 0;">Kết nối Google để cấp quyền lưu video lên Drive của bạn.</p>
                                         </div>
                                         <button id="btnYtTabConnect" type="button" class="btn-submit"
-                                            style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 16px rgba(239,68,68,0.35); padding: 10px 22px; width: auto; margin: 0;">
-                                            <i data-lucide="link" class="btn-icon"></i> Kết Nối YouTube
+                                            style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 16px rgba(16,185,129,0.35); padding: 10px 22px; width: auto; margin: 0;">
+                                            <i data-lucide="link" class="btn-icon"></i> Kết Nối Google
                                         </button>
                                     </div>
                                 </div>
@@ -911,14 +976,12 @@
                                 <div id="ytTabAuthConnected" style="display: none; padding: 8px 0;">
                                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
                                         <div style="display: flex; align-items: center; gap: 14px;">
-                                            <img id="ytTabChannelAvatar" src="" alt="Avatar" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #ef4444; object-fit: cover; display: none;">
-                                            <div id="ytTabChannelAvatarPlaceholder" style="width: 48px; height: 48px; border-radius: 50%; background: rgba(239,68,68,0.15); display: flex; align-items: center; justify-content: center; color: #ef4444; font-weight: bold; font-size: 1.2em;">YT</div>
+                                            <div id="ytTabChannelAvatarPlaceholder" style="width: 48px; height: 48px; border-radius: 50%; background: rgba(16,185,129,0.15); display: flex; align-items: center; justify-content: center; color: #10b981; font-weight: bold; font-size: 1.2em;"><i data-lucide="check"></i></div>
                                             <div>
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <h4 id="ytTabChannelTitle" style="margin: 0; font-size: 1.05em; font-weight: 700;">Tên kênh YouTube</h4>
-                                                    <span style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 0.72em; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(16,185,129,0.3);">Đã kết nối</span>
+                                                    <h4 id="ytTabChannelTitle" style="margin: 0; font-size: 1.05em; font-weight: 700;">Đã kết nối Google Drive</h4>
                                                 </div>
-                                                <p id="ytTabChannelSubscribers" style="margin: 3px 0 0 0; font-size: 0.82em; color: var(--text-secondary);">0 người đăng ký</p>
+                                                <p id="ytTabChannelSubscribers" style="margin: 3px 0 0 0; font-size: 0.82em; color: var(--text-secondary);">Sẵn sàng upload video</p>
                                             </div>
                                         </div>
                                         <button id="btnYtTabLogout" type="button" class="btn-secondary-action" style="padding: 7px 14px; font-size: 0.85em;">
@@ -972,24 +1035,24 @@
                                 <label class="yt-form-label">Tags (cách nhau bằng dấu phẩy)</label>
                                 <input type="text" id="ytTabTags" class="custom-textarea" placeholder="ai, video, shorts, tintuc..." style="padding: 11px 14px; margin-top: 4px; margin-bottom: 16px;">
 
-                                <label class="yt-form-label">Chọn chế độ phát hành</label>
-                                <div style="display: flex; gap: 10px; margin-top: 6px; margin-bottom: 14px;">
-                                    <button type="button" id="btnYtTabModeNow" class="btn-secondary-action" style="flex: 1; padding: 14px; text-align: left; background: rgba(99,102,241,0.15); border-color: #6366f1; border-radius: 10px; cursor: pointer;">
-                                        <div style="font-weight: 700; color: #fff; font-size: 0.95em; display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 1.3em;">🚀</span> Đăng ngay bây giờ
-                                        </div>
-                                        <div style="font-size: 0.8em; color: var(--text-secondary); margin-top: 4px;">Xuất bản video trực tiếp lên kênh ngay sau khi upload</div>
-                                    </button>
+                                <label class="yt-form-label">Phân loại video (Drive)</label>
+                                <select id="ytTabVideoCategory" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 12px;">
+                                    <option value="long video" selected>Long video</option>
+                                    <option value="short video">Short video</option>
+                                </select>
 
-                                    <button type="button" id="btnYtTabModeSchedule" class="btn-secondary-action" style="flex: 1; padding: 14px; text-align: left; background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;">
-                                        <div style="font-weight: 700; color: #60a5fa; font-size: 0.95em; display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 1.3em;">🕐</span> Hẹn giờ tự động đăng
-                                        </div>
-                                        <div style="font-size: 0.8em; color: var(--text-secondary); margin-top: 4px;">Chọn ngày và giờ cụ thể để YouTube tự động công chiếu</div>
-                                    </button>
+                                <label class="yt-form-label">Tên thư mục con (VD: video 1)</label>
+                                <input type="text" id="ytTabFolderName" class="custom-textarea" placeholder="Để trống nếu không muốn tạo thư mục con" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 16px;">
+
+                                <label class="yt-form-label" style="color: #10b981; margin-top: 0; font-weight: 700;">📅 Chọn Ngày & Giờ (Lên Lịch GitHub Actions):</label>
+                                <input type="datetime-local" id="ytTabPublishAt" class="custom-textarea" style="padding: 11px 14px; margin-top: 6px; margin-bottom: 8px; background: rgba(0,0,0,0.3);">
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-hours="1" style="padding: 4px 10px; font-size: 0.75em;">+1 Giờ</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-hours="3" style="padding: 4px 10px; font-size: 0.75em;">+3 Giờ</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tonight" style="padding: 4px 10px; font-size: 0.75em;">Tối nay 19:00</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tomorrow_morning" style="padding: 4px 10px; font-size: 0.75em;">Sáng mai 08:00</button>
+                                    <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tomorrow_evening" style="padding: 4px 10px; font-size: 0.75em;">Tối mai 19:00</button>
                                 </div>
-
-                                <!-- Khi chọn đăng ngay -->
                                 <div id="ytTabPrivacyWrap">
                                     <label class="yt-form-label">Quyền riêng tư</label>
                                     <select id="ytTabPrivacySelect" class="custom-textarea" style="padding: 11px 14px; margin-top: 4px; margin-bottom: 16px;">
@@ -999,32 +1062,10 @@
                                     </select>
                                 </div>
 
-                                <!-- Khi chọn hẹn giờ -->
-                                <div id="ytTabScheduleTimeBox" style="display: none; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.35); border-radius: 12px; padding: 18px; margin-bottom: 18px; box-shadow: 0 4px 16px rgba(59,130,246,0.15);">
-                                    <label class="yt-form-label" style="color: #60a5fa; font-weight: 700; margin-top: 0; font-size: 1.05em; display: flex; align-items: center; gap: 6px;">
-                                        📅 Chọn Ngày & Giờ tự động đăng (Lên lịch phát sóng):
-                                    </label>
-                                    <input type="datetime-local" id="ytTabPublishAt" class="custom-textarea" style="padding: 12px 14px; margin-top: 8px; margin-bottom: 10px; font-size: 1.1em; font-weight: 600; background: rgba(0,0,0,0.4); border-color: rgba(96,165,250,0.5); color: #fff;">
-                                    
-                                    <div style="margin-bottom: 10px;">
-                                        <span style="font-size: 0.82em; color: #cbd5e1; font-weight: 600;">⚡ Gợi ý chọn nhanh:</span>
-                                        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
-                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-hours="1" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">+1 Giờ</button>
-                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-hours="3" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">+3 Giờ</button>
-                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tonight" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">Tối nay 19:00</button>
-                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tomorrow_morning" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">Sáng mai 08:00</button>
-                                            <button type="button" class="btn-secondary-action btn-yt-quick-time" data-target="ytTabPublishAt" data-preset="tomorrow_evening" style="padding: 5px 12px; font-size: 0.8em; border-radius: 6px;">Tối mai 19:00</button>
-                                        </div>
-                                    </div>
-
-                                    <p class="upload-hint" style="margin: 0; color: #93c5fd; font-size: 0.85em; line-height: 1.5;">
-                                        ℹ️ <strong>Cơ chế tự động của YouTube:</strong> Video sẽ được tải lên YouTube ở chế độ riêng tư và YouTube sẽ tự động công chiếu hoặc chuyển sang công khai vào đúng ngày & giờ bạn đã đặt.
-                                    </p>
-                                </div>
-
+                                
                                 <button id="btnYtTabSubmit" type="button" class="btn-submit btn-submit-large"
-                                    style="background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 6px 22px rgba(239,68,68,0.35); margin-top: 8px;">
-                                    <i data-lucide="upload-cloud" class="btn-icon"></i> Bắt Đầu Đăng Lên YouTube
+                                    style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 6px 22px rgba(16,185,129,0.35); margin-top: 10px;">
+                                    <i data-lucide="cloud-upload" class="btn-icon"></i> Upload Lên Drive & Lên Lịch
                                 </button>
 
                                 <!-- Progress & Success -->
@@ -1449,6 +1490,9 @@
         }
     });
     </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="googleAuth.js"></script>
+    <script src="driveService.js"></script>
     <script src="app.js"></script>
     <script>document.addEventListener('DOMContentLoaded', () => { if (typeof lucide !== 'undefined') lucide.createIcons(); });</script>
 </body>

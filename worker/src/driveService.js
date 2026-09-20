@@ -153,6 +153,36 @@ async function writeMetadata({ fileId, folderId, videos }) {
 }
 
 /**
+ * Cập nhật file info.json trong thư mục con của video.
+ */
+async function writeVideoInfo(videoMeta, targetFolderId) {
+  if (!targetFolderId) return;
+
+  const auth = getDriveAuthClient();
+  const drive = getDrive(auth);
+
+  // Tìm file info.json
+  const res = await drive.files.list({
+    q: `name='info.json' and '${targetFolderId}' in parents and trashed=false`,
+    fields: 'files(id)',
+    spaces: 'drive',
+  });
+
+  const media = {
+    mimeType: 'application/json',
+    body: JSON.stringify(videoMeta, null, 2),
+  };
+
+  if (res.data.files.length > 0) {
+    await drive.files.update({
+      fileId: res.data.files[0].id,
+      media,
+    });
+    console.log(`[DRIVE] Updated info.json in subfolder ${targetFolderId}`);
+  }
+}
+
+/**
  * Download video file từ Google Drive.
  * Trả về readable stream để pipe thẳng sang YouTube upload.
  * 
@@ -178,5 +208,6 @@ module.exports = {
   getYoutubeAuthClient,
   readMetadata,
   writeMetadata,
+  writeVideoInfo,
   downloadVideoStream,
 };
