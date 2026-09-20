@@ -653,83 +653,8 @@
                         </button>
 
                     </form>
-                </div>
-
-                <!-- ══════════ TAB 4: AI IMAGE GENERATOR (ẩn trong menu) ══════════ -->
-                <div id="image-gen-tab" class="tab-content">
-                    <div class="ai-assistant-container">
-
-                        <div class="page-header">
-                            <div class="page-header-icon violet"><i data-lucide="image-plus"></i></div>
-                            <div class="page-header-body">
-                                <h2>Tạo Ảnh AI</h2>
-                                <p>Tự động tạo ảnh cho từng scene bằng Gemini AI. Ảnh được lưu vào server và hiển thị trực tiếp.</p>
-                            </div>
-                        </div>
-
-                        <!-- Video ID -->
-                        <div class="section-card">
-                            <div class="section-card-header indigo">
-                                <span class="section-card-header-icon"><i data-lucide="hash"></i></span>
-                                <span class="section-card-header-title">Video ID</span>
-                            </div>
-                            <div class="section-card-body">
-                                <div class="img-gen-input-row">
-                                    <input type="text" id="imgGenVideoId" class="img-gen-text-input" placeholder="e.g. my-video-2024" />
-                                    <button type="button" id="btnGenVideoId" class="btn-gen-id" title="Tạo ID ngẫu nhiên"><i data-lucide="shuffle" class="btn-icon"></i> Tạo ID</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Prompts -->
-                        <div class="section-card">
-                            <div class="section-card-header violet">
-                                <span class="section-card-header-icon"><i data-lucide="message-square"></i></span>
-                                <span class="section-card-header-title">Danh Sách Prompts</span>
-                            </div>
-                            <div class="section-card-body">
-                                <div class="img-gen-prompts-header">
-                                    <p class="upload-hint" style="margin: 0;">Mỗi dòng = 1 scene. Có thể import từ Tab Trợ Lý AI.</p>
-                                    <button type="button" id="btnImportPrompts" class="btn-import-prompts"><i data-lucide="arrow-left" class="btn-icon"></i> Lấy từ Tab AI</button>
-                                </div>
-                                <textarea id="imgGenPrompts" class="custom-textarea img-gen-textarea"
-                                    placeholder="Scene 1: A detailed fantasy landscape with mountains and fog...&#10;Scene 2: A warrior standing on a cliff at sunset...&#10;Scene 3: ..."
-                                    rows="6" style="margin-top: 8px;"></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div style="display: flex; gap: 12px;">
-                            <button id="btnStartImageGen" type="button" class="btn-submit" style="flex: 1;">
-                                <i data-lucide="sparkles" class="btn-icon"></i> Bắt Đầu Tạo Ảnh
-                            </button>
-                            <button id="btnDownloadAllImages" type="button" class="btn-submit"
-                                style="flex: 0 0 auto; background: linear-gradient(135deg, #7c3aed, #6d28d9); display: none;">
-                                <i data-lucide="package" class="btn-icon"></i> Tải Tất Cả (ZIP)
-                            </button>
-                        </div>
-
-                        <!-- Progress -->
-                        <div id="imgGenProgress" style="display: none; margin-top: 20px;">
-                            <div class="img-gen-progress-header">
-                                <span id="imgGenProgressLabel">Đang khởi động...</span>
-                                <span id="imgGenProgressCount">0 / 0</span>
-                            </div>
-                            <div class="img-gen-progress-bar-wrap">
-                                <div class="img-gen-progress-bar" id="imgGenProgressBar" style="width: 0%"></div>
-                            </div>
-                        </div>
-
-                        <!-- Image Grid -->
-                        <div id="imgGenGrid" class="image-gen-grid" style="margin-top: 20px;"></div>
-
-                        <!-- Error -->
-                        <div id="imgGenError" class="img-gen-error" style="display: none;"></div>
-
-                    </div>
-                </div>
-
-                <!-- ══════════ PROGRESS VIEW ══════════ -->
+                
+<!-- ══════════ PROGRESS VIEW ══════════ -->
                 <div id="progress" class="progress-section" style="display: none;">
                     <h2><i data-lucide="loader" class="btn-icon spin-icon"></i> Đang Tạo Video...</h2>
                     <p class="progress-subtitle">Vui lòng chờ, chúng tôi đang lắp ráp câu chuyện của bạn...</p>
@@ -938,6 +863,88 @@
                         </div>
                     </div>
                 </div>
+                <div id="error" class="error-section" style="display: none;">
+                    <h2><i data-lucide="alert-circle" class="btn-icon"></i> Có Lỗi Xảy Ra</h2>
+                    <p id="errorMessage"></p>
+                    <button onclick="location.reload()" class="btn-retry"><i data-lucide="rotate-ccw" class="btn-icon"></i> Thử Lại</button>
+                </div>
+                    </div>
+
+                <!-- ══════════ TAB 4: AI IMAGE GENERATOR (ẩn trong menu) ══════════ -->
+                <div id="image-gen-tab" class="tab-content">
+                    <div class="ai-assistant-container">
+
+                        <div class="page-header">
+                            <div class="page-header-icon violet"><i data-lucide="image-plus"></i></div>
+                            <div class="page-header-body">
+                                <h2>Tạo Ảnh AI</h2>
+                                <p>Tự động tạo ảnh cho từng scene bằng Gemini AI. Ảnh được lưu vào server và hiển thị trực tiếp.</p>
+                            </div>
+                        </div>
+
+                        <!-- Video ID -->
+                        <div class="section-card">
+                            <div class="section-card-header indigo">
+                                <span class="section-card-header-icon"><i data-lucide="hash"></i></span>
+                                <span class="section-card-header-title">Video ID</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="img-gen-input-row">
+                                    <input type="text" id="imgGenVideoId" class="img-gen-text-input" placeholder="e.g. my-video-2024" />
+                                    <button type="button" id="btnGenVideoId" class="btn-gen-id" title="Tạo ID ngẫu nhiên"><i data-lucide="shuffle" class="btn-icon"></i> Tạo ID</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Prompts -->
+                        <div class="section-card">
+                            <div class="section-card-header violet">
+                                <span class="section-card-header-icon"><i data-lucide="message-square"></i></span>
+                                <span class="section-card-header-title">Danh Sách Prompts</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="img-gen-prompts-header">
+                                    <p class="upload-hint" style="margin: 0;">Mỗi dòng = 1 scene. Có thể import từ Tab Trợ Lý AI.</p>
+                                    <button type="button" id="btnImportPrompts" class="btn-import-prompts"><i data-lucide="arrow-left" class="btn-icon"></i> Lấy từ Tab AI</button>
+                                </div>
+                                <textarea id="imgGenPrompts" class="custom-textarea img-gen-textarea"
+                                    placeholder="Scene 1: A detailed fantasy landscape with mountains and fog...&#10;Scene 2: A warrior standing on a cliff at sunset...&#10;Scene 3: ..."
+                                    rows="6" style="margin-top: 8px;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div style="display: flex; gap: 12px;">
+                            <button id="btnStartImageGen" type="button" class="btn-submit" style="flex: 1;">
+                                <i data-lucide="sparkles" class="btn-icon"></i> Bắt Đầu Tạo Ảnh
+                            </button>
+                            <button id="btnDownloadAllImages" type="button" class="btn-submit"
+                                style="flex: 0 0 auto; background: linear-gradient(135deg, #7c3aed, #6d28d9); display: none;">
+                                <i data-lucide="package" class="btn-icon"></i> Tải Tất Cả (ZIP)
+                            </button>
+                        </div>
+
+                        <!-- Progress -->
+                        <div id="imgGenProgress" style="display: none; margin-top: 20px;">
+                            <div class="img-gen-progress-header">
+                                <span id="imgGenProgressLabel">Đang khởi động...</span>
+                                <span id="imgGenProgressCount">0 / 0</span>
+                            </div>
+                            <div class="img-gen-progress-bar-wrap">
+                                <div class="img-gen-progress-bar" id="imgGenProgressBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Image Grid -->
+                        <div id="imgGenGrid" class="image-gen-grid" style="margin-top: 20px;"></div>
+
+                        <!-- Error -->
+                        <div id="imgGenError" class="img-gen-error" style="display: none;"></div>
+
+                    </div>
+                </div>
+
+                
 
                 <!-- ══════════ TAB 4: ĐĂNG & LÊN LỊCH YOUTUBE ══════════ -->
                 <div id="youtube-publish-tab" class="tab-content">
@@ -1105,11 +1112,6 @@
                 </div>
 
                 <!-- ══════════ ERROR VIEW ══════════ -->
-                <div id="error" class="error-section" style="display: none;">
-                    <h2><i data-lucide="alert-circle" class="btn-icon"></i> Có Lỗi Xảy Ra</h2>
-                    <p id="errorMessage"></p>
-                    <button onclick="location.reload()" class="btn-retry"><i data-lucide="rotate-ccw" class="btn-icon"></i> Thử Lại</button>
-                </div>
 
             </div><!-- /.content-wrapper -->
         </main>
