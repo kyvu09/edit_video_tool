@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const geminiKeyManager = require('./geminiKeyManager');
 
 const PROMPT_DIR = path.resolve(__dirname, '..', '..', 'prompt');
 const PROMPT_CREATE_PATH = path.join(PROMPT_DIR, 'prompt-create-scenes.md');
@@ -10,58 +11,108 @@ const PROMPT_EXTRACT_PATH = path.join(PROMPT_DIR, 'extract-content.md');
 const PROMPT_CONTENT_PATH = path.join(PROMPT_DIR, 'create-content.md');
 
 /**
- * Call the Gemini API via Axios REST request
+ * Lấy danh sách các model text từ file .env theo thứ tự ưu tiên
+ */
+function getTextCandidateModels() {
+  const models = [];
+
+  // 1. Model chính từ GEMINI_MODEL trong .env
+  if (process.env.GEMINI_MODEL && process.env.GEMINI_MODEL.trim()) {
+    models.push(process.env.GEMINI_MODEL.trim());
+  }
+
+  // 2. Các model dự phòng GEMINI_MODEL_FALLBACK_1, GEMINI_MODEL_FALLBACK_2,... trong .env
+  for (let i = 1; i <= 10; i++) {
+    const fallback = process.env[`GEMINI_MODEL_FALLBACK_${i}`];
+    if (fallback && fallback.trim()) {
+      models.push(fallback.trim());
+    }
+  }
+
+  // 3. Biến GEMINI_FALLBACK_MODELS (dạng danh sách cách nhau bởi dấu phẩy)
+  if (process.env.GEMINI_FALLBACK_MODELS) {
+    const splitModels = process.env.GEMINI_FALLBACK_MODELS.split(/[,;\n]/).map(m => m.trim()).filter(Boolean);
+    models.push(...splitModels);
+  }
+
+  // 4. Mặc định dự phòng nếu chưa cấu hình
+  models.push('gemini-2.5-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash-lite');
+
+  return models.filter((m, idx, arr) => arr.indexOf(m) === idx);
+}
+
+/**
+ * Call the Gemini API via Axios REST request with automatic key rotation and model fallback
  */
 async function callGemini(systemInstruction, userPrompt, temperature = 0.7) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-  
-  if (!apiKey || apiKey.trim() === '') {
-    throw new Error('GEMINI_API_KEY is not defined in environment variables (.env file). Please update your configuration.');
-  }
+  const candidateModels = getTextCandidateModels();
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  return await geminiKeyManager.executeWithFallback(async (apiKey, meta) => {
+    const payload = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: userPrompt
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: temperature
+      }
+    };
 
-  const payload = {
-    contents: [
-      {
-        role: 'user',
+    if (systemInstruction) {
+      payload.systemInstruction = {
         parts: [
           {
-            text: userPrompt
+            text: systemInstruction
           }
         ]
-      }
-    ],
-    generationConfig: {
-      temperature: temperature
+      };
     }
-  };
 
-  if (systemInstruction) {
-    payload.systemInstruction = {
-      parts: [
-        {
-          text: systemInstruction
+    let lastErr = null;
+    for (const model of candidateModels) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await axios.post(url, payload, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 300000 // 5 phut timeout
+        });
+
+        const candidates = response.data && response.data.candidates;
+        if (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0]) {
+          return candidates[0].content.parts[0].text;
+        } else {
+          console.error('[Gemini Service] API Error Response:', JSON.stringify(response.data));
+          throw new Error('Invalid or empty response structure received from Gemini API.');
         }
-      ]
-    };
-  }
+      } catch (err) {
+        lastErr = err;
+        const status = err.response?.status;
 
-  const response = await axios.post(url, payload, {
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    timeout: 300000 // 5 phut timeout
-  });
+        // Nếu 429 (Rate limit) hoặc 403 (Key sai): Ném lỗi để xoay API Key ngay lập tức
+        if (status === 429 || status === 403) {
+          throw err;
+        }
 
-  const candidates = response.data && response.data.candidates;
-  if (candidates && candidates[0] && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0]) {
-    return candidates[0].content.parts[0].text;
-  } else {
-    console.error('[Gemini Service] API Error Response:', JSON.stringify(response.data));
-    throw new Error('Invalid or empty response structure received from Gemini API.');
-  }
+        // Nếu 503 (Google quá tải) hoặc 404 (Model không tồn tại trên tài khoản này): Chuyển sang model dự phòng
+        if (status === 503 || status === 404) {
+          console.warn(`[Gemini Service] Model ${model} gặp lỗi [${status}] (${err.response?.data?.error?.message || err.message}). Tự động đổi sang model dự phòng tiếp theo...`);
+          continue;
+        }
+
+        throw err;
+      }
+    }
+
+    throw lastErr;
+  }, { context: 'geminiService.callGemini' });
 }
 
 /**
@@ -129,12 +180,7 @@ async function extractVideoContent(videoUrl) {
     throw new Error('Video URL cannot be empty.');
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-
-  if (!apiKey || apiKey.trim() === '') {
-    throw new Error('GEMINI_API_KEY is not defined in environment variables (.env file).');
-  }
+  const candidateModels = getTextCandidateModels();
 
   let extractPrompt = '';
   try {
@@ -156,48 +202,69 @@ async function extractVideoContent(videoUrl) {
   console.log('[Gemini Service] Sending video URL via fileData to Gemini for extraction...');
   console.log('[Gemini Service] Video URL:', videoUrl);
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  // Gửi video URL qua fileData để Gemini thực sự "xem" video
-  const payload = {
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          {
-            fileData: {
-              fileUri: videoUrl
+  return await geminiKeyManager.executeWithFallback(async (apiKey, meta) => {
+    const payload = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              fileData: {
+                fileUri: videoUrl
+              }
+            },
+            {
+              text: textPrompt
             }
-          },
-          {
-            text: textPrompt
-          }
-        ]
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.1
       }
-    ],
-    generationConfig: {
-      temperature: 0.1
+    };
+
+    let lastErr = null;
+    for (const model of candidateModels) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await axios.post(apiUrl, payload, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 300000 // 5 phút timeout
+        });
+
+        const candidates = response.data && response.data.candidates;
+        if (
+          candidates &&
+          candidates[0] &&
+          candidates[0].content &&
+          candidates[0].content.parts &&
+          candidates[0].content.parts[0]
+        ) {
+          return candidates[0].content.parts[0].text;
+        } else {
+          console.error('[Gemini Service] Extract API Error Response:', JSON.stringify(response.data));
+          throw new Error('Invalid or empty response structure received from Gemini API.');
+        }
+      } catch (err) {
+        lastErr = err;
+        const status = err.response?.status;
+
+        if (status === 429 || status === 403) {
+          throw err;
+        }
+
+        if (status === 503 || status === 404) {
+          console.warn(`[Gemini Service] Model ${model} gặp lỗi [${status}]. Thử model dự phòng tiếp theo...`);
+          continue;
+        }
+
+        throw err;
+      }
     }
-  };
 
-  const response = await axios.post(apiUrl, payload, {
-    headers: { 'Content-Type': 'application/json' },
-    timeout: 300000 // 5 phút timeout
-  });
-
-  const candidates = response.data && response.data.candidates;
-  if (
-    candidates &&
-    candidates[0] &&
-    candidates[0].content &&
-    candidates[0].content.parts &&
-    candidates[0].content.parts[0]
-  ) {
-    return candidates[0].content.parts[0].text;
-  } else {
-    console.error('[Gemini Service] Extract API Error Response:', JSON.stringify(response.data));
-    throw new Error('Invalid or empty response structure received from Gemini API.');
-  }
+    throw lastErr;
+  }, { context: 'geminiService.extractVideoContent' });
 }
 
 async function createContentFromScript(rawScriptText) {

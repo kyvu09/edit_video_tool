@@ -1,12 +1,8 @@
-'use strict';
-
 const { GoogleGenAI } = require('@google/genai');
+const geminiKeyManager = require('../../services/geminiKeyManager');
 
-// Retry delays in ms: 1s, 2s, 4s — only for transient errors (500, 503)
-const RETRY_DELAYS = [1000, 2000, 4000];
-
-// 429 with "limit: 0" = quota exhausted (billing required), NOT transient → don't retry
-// 429 with "retryDelay" = rate limited → DO retry
+// Retry delays in ms: 1s, 2s — for transient errors (500, 503)
+const RETRY_DELAYS = [1000, 2000];
 const TRANSIENT_STATUS = new Set([500, 503]);
 
 /**
@@ -27,14 +23,14 @@ function friendlyError(err) {
 
   // Quota exhausted (billing required)
   if (msg.includes('RESOURCE_EXHAUSTED') || (err.status === 429 && msg.includes('limit: 0'))) {
-    return `Quota hết – model image generation yêu cầu bật billing trên Google Cloud. Truy cập: https://console.cloud.google.com/billing`;
+    return `Quota hết – model image generation yêu cầu bật billing trên Google Cloud hoặc đổi sang API key khác.`;
   }
 
   // Rate limited (temporary)
   if (err.status === 429) {
     const retryMatch = msg.match(/retry in ([\d.]+)s/i);
     const wait = retryMatch ? ` (thử lại sau ${Math.ceil(parseFloat(retryMatch[1]))}s)` : '';
-    return `Gọi API quá nhanh (rate limit)${wait}. Vui lòng thử lại.`;
+    return `Gọi API quá nhanh (rate limit)${wait}. Đang tự động đổi key dự phòng...`;
   }
 
   if (err.status === 404) {
@@ -42,23 +38,34 @@ function friendlyError(err) {
   }
 
   if (err.status === 400) {
-    return `Prompt bị từ chối (có thể vi phạm chính sách nội dung).`;
+    return `Prompt bị từ chối (có thể vi phạm chính sách nội dung) hoặc API key không hợp lệ.`;
   }
 
   if (err.status === 403) {
-    return `API key không có quyền dùng model này. Kiểm tra lại GEMINI_API_KEY.`;
+    return `API key không có quyền dùng model này.`;
   }
 
   return msg.length > 200 ? msg.slice(0, 200) + '...' : msg;
 }
 
+function getImageCandidateModels(overrideModel) {
+  if (overrideModel) return [overrideModel];
+  const list = [];
+  if (process.env.GEMINI_IMAGE_MODEL) list.push(process.env.GEMINI_IMAGE_MODEL.trim());
+  for (let i = 1; i <= 5; i++) {
+    const fb = process.env[`GEMINI_IMAGE_MODEL_FALLBACK_${i}`];
+    if (fb && fb.trim()) list.push(fb.trim());
+  }
+  if (process.env.GEMINI_IMAGE_MODEL_FALLBACK) {
+    list.push(...process.env.GEMINI_IMAGE_MODEL_FALLBACK.split(/[,;\n]/).map(m => m.trim()).filter(Boolean));
+  }
+  list.push('gemini-2.5-flash-image', 'gemini-3.1-flash-lite-image', 'gemini-3.1-flash-image');
+  return list.filter((m, i, arr) => arr.indexOf(m) === i);
+}
+
 /**
  * Generate a single image from a text prompt using Gemini Image model.
- *
- * Model can be overridden via:
- *   - options.model parameter
- *   - GEMINI_IMAGE_MODEL env variable
- *   - Fallback: gemini-3.1-flash-lite-image
+ * Automatically rotates and falls back to backup keys and models if rate limited or on error.
  *
  * @param {string} prompt  - The image generation prompt
  * @param {object} options - Optional overrides
@@ -66,96 +73,83 @@ function friendlyError(err) {
  * @returns {Promise<{ imageBuffer: Buffer, mimeType: string, text: string }>}
  */
 async function generateImage(prompt, options = {}) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey.trim() === '') {
-    throw new Error('GEMINI_API_KEY is not defined in .env file.');
-  }
+  const candidateModels = getImageCandidateModels(options.model);
 
-  const ai = new GoogleGenAI({ apiKey });
+  return await geminiKeyManager.executeWithFallback(async (apiKey, meta) => {
+    const ai = new GoogleGenAI({ apiKey });
+    let lastError = null;
 
-  // Allow override via options, then env, then default
-  const model = options.model || process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-lite-image';
+    for (const model of candidateModels) {
+      console.log(`[GeminiImageProvider] Thử tạo ảnh với Key #${meta.keyIndex}/${meta.totalKeys} (${meta.maskedKey}) — model: ${model}`);
 
-  let lastError = null;
+      for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+              responseModalities: ['IMAGE', 'TEXT'],
+              temperature: 1,
+              topP: 0.95,
+            },
+          });
 
-  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
-    try {
-      console.log(`[GeminiImageProvider] Attempt ${attempt + 1} — model: ${model}`);
+          let imageBuffer = null;
+          let mimeType = 'image/png';
+          let text = '';
 
-      const response = await ai.models.generateContent({
-        model,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseModalities: ['IMAGE', 'TEXT'],
-          temperature: 1,
-          topP: 0.95,
-        },
-      });
+          const candidates = response.candidates || [];
+          const parts = (candidates[0] && candidates[0].content && candidates[0].content.parts) || [];
 
-      let imageBuffer = null;
-      let mimeType = 'image/png';
-      let text = '';
+          for (const part of parts) {
+            if (part.inlineData && part.inlineData.data) {
+              imageBuffer = Buffer.from(part.inlineData.data, 'base64');
+              mimeType = part.inlineData.mimeType || 'image/png';
+            } else if (part.text) {
+              text = part.text;
+            }
+          }
 
-      const candidates = response.candidates || [];
-      const parts = (candidates[0] && candidates[0].content && candidates[0].content.parts) || [];
+          if (!imageBuffer) {
+            throw new Error('Gemini did not return image data in response. Model may not support image generation.');
+          }
 
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          imageBuffer = Buffer.from(part.inlineData.data, 'base64');
-          mimeType = part.inlineData.mimeType || 'image/png';
-        } else if (part.text) {
-          text = part.text;
+          return { imageBuffer, mimeType, text };
+
+        } catch (err) {
+          lastError = err;
+          const statusCode = err.status;
+
+          // Nếu hết quota (429 limit: 0) hoặc dính rate limit hoặc 403: ném lỗi để Fallback sang key tiếp theo ngay lập tức
+          const isQuotaExhausted = statusCode === 429 && err.message && err.message.includes('limit: 0');
+          if (isQuotaExhausted || statusCode === 403 || statusCode === 429) {
+            console.warn(`[GeminiImageProvider] Key #${meta.keyIndex} gặp lỗi [${statusCode}]. Chuyển sang key dự phòng tiếp theo...`);
+            throw err;
+          }
+
+          // Nếu model quá tải (503) hoặc model không khả dụng (404): Chuyển sang model ảnh dự phòng tiếp theo
+          if (statusCode === 503 || statusCode === 404) {
+            console.warn(`[GeminiImageProvider] Model ảnh ${model} gặp lỗi [${statusCode}]. Đang thử model ảnh dự phòng tiếp theo...`);
+            break; // Thoát retry loop để thử model tiếp theo trong candidateModels
+          }
+
+          // Lỗi tạm thời khác: thử lại nhanh 1-2 lần
+          const isTransient = TRANSIENT_STATUS.has(statusCode);
+          if (isTransient && attempt < RETRY_DELAYS.length) {
+            const delay = RETRY_DELAYS[attempt];
+            console.warn(`[GeminiImageProvider] Lỗi tạm thời ${statusCode}. Thử lại trong ${delay}ms...`);
+            await sleep(delay);
+            continue;
+          }
+
+          throw err;
         }
       }
-
-      if (!imageBuffer) {
-        throw new Error('Gemini did not return image data in response. Model may not support image generation.');
-      }
-
-      return { imageBuffer, mimeType, text };
-
-    } catch (err) {
-      lastError = err;
-
-      const statusCode = err.status;
-
-      // ── Quota exhausted (limit: 0) — NEVER retry ──────────────
-      const isQuotaExhausted = statusCode === 429 && err.message && err.message.includes('limit: 0');
-      if (isQuotaExhausted) {
-        console.error(`[GeminiImageProvider] Quota exhausted for model ${model} — billing required. Not retrying.`);
-        break;
-      }
-
-      // ── Transient errors (500, 503) — retry with backoff ──────
-      const isTransient = TRANSIENT_STATUS.has(statusCode);
-      if (isTransient && attempt < RETRY_DELAYS.length) {
-        const delay = RETRY_DELAYS[attempt];
-        console.warn(`[GeminiImageProvider] Transient error ${statusCode}. Retrying in ${delay}ms...`);
-        await sleep(delay);
-        continue;
-      }
-
-      // ── Rate limited (429, not quota) — retry with longer wait ──
-      const isRateLimited = statusCode === 429 && !isQuotaExhausted;
-      if (isRateLimited && attempt < RETRY_DELAYS.length) {
-        // Extract suggested retry delay from message if available
-        const retryMatch = err.message && err.message.match(/retry in ([\d.]+)s/i);
-        const suggestedDelay = retryMatch ? Math.min(parseFloat(retryMatch[1]) * 1000, 10000) : RETRY_DELAYS[attempt];
-        console.warn(`[GeminiImageProvider] Rate limited (429). Waiting ${suggestedDelay}ms before retry...`);
-        await sleep(suggestedDelay);
-        continue;
-      }
-
-      // Not retryable or out of retries
-      break;
     }
-  }
 
-  // Convert to user-friendly error
-  const friendly = friendlyError(lastError);
-  const error = new Error(friendly);
-  error.originalError = lastError;
-  throw error;
+    throw lastError;
+  }, { context: 'geminiImageProvider.generateImage' });
 }
 
 module.exports = { generateImage };
+

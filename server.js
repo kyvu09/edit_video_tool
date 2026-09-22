@@ -16,6 +16,7 @@ const subtitleGenerator = require('./src/services/subtitleGenerator');
 const ffmpegRenderer = require('./src/services/ffmpegRenderer');
 const bgRemovalService = require('./src/services/bgRemovalService');
 const geminiService = require('./src/services/geminiService');
+const geminiKeyManager = require('./src/services/geminiKeyManager');
 const youtubeService = require('./src/services/youtubeService');
 const imageQueue = require('./src/services/imageQueue');
 const sessionManager = require('./src/services/sessionManager');
@@ -695,10 +696,10 @@ app.post('/api/debug-generate-image', async (req, res) => {
       return res.status(400).json({ error: 'Prompt không được để trống' });
     }
 
-    const effectiveApiKey = (apiKey && apiKey.trim()) || process.env.GEMINI_API_KEY;
+    const effectiveApiKey = (apiKey && apiKey.trim()) || geminiKeyManager.getActiveKey();
     if (!effectiveApiKey || effectiveApiKey.trim() === '') {
       return res.status(400).json({
-        error: 'GEMINI_API_KEY chưa được cấu hình. Vui lòng nhập API Key trên form hoặc trong file .env.'
+        error: 'Chưa cấu hình API Key Gemini trong file .env hoặc trên form.'
       });
     }
 
@@ -811,6 +812,10 @@ app.post('/api/debug-generate-image', async (req, res) => {
       errMsg = 'Model không tồn tại hoặc chưa được hỗ trợ trên API key này (404).';
     } else if (status === 403) {
       errMsg = 'API Key không có quyền truy cập model này (403 Forbidden).';
+    }
+
+    if (!req.body.apiKey) {
+      geminiKeyManager.rotateKey(`Debug Image API lỗi [${status}]`);
     }
 
     return res.status(status).json({
@@ -927,48 +932,56 @@ app.get('/api/debug-openai', async (req, res) => {
 
 
 app.get('/api/debug-gemini', async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const isPlaceholder = !apiKey || apiKey.trim() === '';
-
-  if (isPlaceholder) {
+  const keys = geminiKeyManager.getAllKeys();
+  if (keys.length === 0) {
     return res.json({
       status: 'placeholder',
       message: 'Gemini Offline (No Key)',
-      details: 'GEMINI_API_KEY is missing in your .env file. Please add your Gemini API Key to enable the AI Script Assistant.'
+      details: 'Chưa cấu hình GEMINI_API_KEY trong file .env. Vui lòng thêm ít nhất 1 API key để sử dụng tính năng AI.'
     });
   }
 
+  const activeKey = geminiKeyManager.getActiveKey();
+  const activeIdx = geminiKeyManager.getActiveIndex();
+  const maskedKey = geminiKeyManager.maskKey(activeKey);
+
   try {
     const axios = require('axios');
-    const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+    const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${activeKey}`;
     const response = await axios.get(testUrl, {
       timeout: 8000
     });
 
     if (response.status === 200) {
+      const keyList = geminiKeyManager.getKeyStatusList();
+      const keySummary = keyList.map(k => `• Key #${k.index} (${k.masked})${k.isCurrent ? ' <strong>[Đang dùng]</strong>' : ' [Dự phòng]'}`).join('<br>');
+
       return res.json({
         status: 'active',
-        message: 'Active (Gemini Online)',
-        details: `Key is valid. Google returned ${response.data.models ? response.data.models.length : 0} available models.`
+        message: `Active (${keys.length} Keys sẵn sàng)`,
+        details: `Key #${activeIdx} (${maskedKey}) đang kết nối tốt.<br><br><strong>Danh sách Key dự phòng tự động xoay vòng:</strong><br>${keySummary}`
       });
     }
   } catch (error) {
     let errMsg = error.message;
-    let details = 'Failed to connect to Google Gemini API.';
+    let details = 'Không thể kết nối đến Google Gemini API.';
     let is400 = false;
 
     if (error.response) {
       if (error.response.status === 400 || error.response.status === 403) {
         is400 = true;
-        errMsg = 'Invalid API Key (400/403 Error)';
-        details = 'The API key provided was rejected by Google Gemini. Please check your GEMINI_API_KEY in your .env file.';
+        errMsg = `Key #${activeIdx} lỗi (${error.response.status})`;
+        details = `Key #${activeIdx} (${maskedKey}) bị từ chối hoặc sai quyền. Hệ thống sẽ tự động xoay sang các key dự phòng khác khi gọi API.`;
+      } else if (error.response.status === 429) {
+        errMsg = `Key #${activeIdx} bị Rate Limit (429)`;
+        details = `Key #${activeIdx} (${maskedKey}) đã đạt giới hạn gọi API. Hệ thống sẽ tự động chuyển sang key dự phòng tiếp theo.`;
       } else {
         errMsg = `Gemini returned status ${error.response.status}`;
         details = JSON.stringify(error.response.data || {});
       }
     } else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
       errMsg = 'Connection Timed Out';
-      details = 'Could not reach generativelanguage.googleapis.com. Check your internet connection or firewall rules.';
+      details = 'Không thể kết nối tới generativelanguage.googleapis.com. Kiểm tra lại mạng internet của bạn.';
     }
 
     return res.json({
