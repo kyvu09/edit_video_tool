@@ -46,8 +46,9 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].currentStep = 'step-rembg';
     sessions[sessionId].progress = 2;
     
+    let fixedBgPath = null;
     if (bgPath) {
-      sessions[sessionId].statusMessage = 'Tách nền các ảnh scene...';
+      sessions[sessionId].statusMessage = 'Tách nền các ảnh scene và chuẩn bị background cố định...';
       const imagePaths = images.map(img => img.path);
       const processedPaths = await bgRemovalService.processBackgrounds(
         imagePaths,
@@ -61,11 +62,18 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
           sessions[sessionId].statusMessage = `Tách nền ảnh scene ${curr + 1} / ${tot}...`;
         }
       );
-      // Update image paths in Multer objects to point to composited images
+      fixedBgPath = processedPaths.fixedBgPath || null;
+      // Update image paths in Multer objects to point to separated transparent PNGs
       images.forEach((img, idx) => {
         img.path = processedPaths[idx];
       });
-      sessions[sessionId].statusMessage = 'Tách & ghép nền hoàn tất.';
+      sessions[sessionId].sceneImages = processedPaths.map((p, idx) => ({
+        scene: idx + 1,
+        path: p,
+        filename: path.basename(p),
+        url: `/download/${sessionId}/${path.basename(p)}`
+      }));
+      sessions[sessionId].statusMessage = 'Tách nền các scene & chuẩn bị background cố định hoàn tất.';
     } else {
       sessions[sessionId].statusMessage = 'Bỏ qua tách nền (Không upload ảnh background).';
     }
@@ -180,7 +188,7 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
         sessions[sessionId].progress = 96;
         sessions[sessionId].statusMessage = 'Burning subtitles into video...';
       }
-    });
+    }, fixedBgPath);
 
     sessions[sessionId].progress = 100;
     sessions[sessionId].status = 'completed';

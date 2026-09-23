@@ -123,22 +123,76 @@ def postprocess_rembg(img, erode_px=1, feather_px=2):
 
 
 # ─────────────────────────────────────────────
-#  COMPOSITE HELPER
+#  COMPOSITE & CANVAS HELPERS
 # ─────────────────────────────────────────────
+
+def get_canvas_size(aspect_ratio="16:9"):
+    if aspect_ratio == "9:16":
+        return 1080, 1920, int(1920 * 0.55), 350
+    return 1920, 1080, int(1080 * 0.70), 150
+
+
+def prepare_background(bg_path, out_path, aspect_ratio="16:9"):
+    """
+    Standardize a background image by scaling to fill the target aspect ratio canvas
+    and center-cropping. Saves the fixed background once.
+    """
+    canvas_w, canvas_h, _, _ = get_canvas_size(aspect_ratio)
+    bg_img = Image.open(bg_path).convert("RGB")
+
+    bg_w, bg_h = bg_img.size
+    scale = max(canvas_w / bg_w, canvas_h / bg_h)
+    new_w, new_h = int(round(bg_w * scale)), int(round(bg_h * scale))
+    bg_resized = bg_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+    left = (new_w - canvas_w) // 2
+    top = (new_h - canvas_h) // 2
+    bg_cropped = bg_resized.crop((left, top, left + canvas_w, top + canvas_h))
+
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    bg_cropped.save(out_path, format="PNG")
+    print(f"[prepare_background] Saved fixed background ({canvas_w}x{canvas_h}) -> {out_path}")
+    return out_path
+
+
+def create_transparent_scene(fg_nobg, aspect_ratio="16:9"):
+    """
+    Scale fg proportionally, center horizontally, and paste onto a transparent RGBA canvas
+    matching the video dimensions and subtitle safe zone.
+    """
+    canvas_w, canvas_h, target_h, safe_zone_bottom = get_canvas_size(aspect_ratio)
+
+    fg_w, fg_h = fg_nobg.size
+    scale = target_h / fg_h
+
+    fg_resized = fg_nobg.resize(
+        (int(round(fg_w * scale)), target_h),
+        Image.Resampling.LANCZOS
+    )
+
+    if fg_resized.width > canvas_w * 0.85:
+        scale_w = (canvas_w * 0.85) / fg_resized.width
+        fg_resized = fg_resized.resize(
+            (
+                int(round(fg_resized.width * scale_w)),
+                int(round(fg_resized.height * scale_w))
+            ),
+            Image.Resampling.LANCZOS
+        )
+
+    paste_x = (canvas_w - fg_resized.width) // 2
+    paste_y = canvas_h - fg_resized.height - safe_zone_bottom
+
+    transparent_canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+    transparent_canvas.paste(fg_resized, (paste_x, paste_y), fg_resized)
+    return transparent_canvas
+
 
 def composite(fg_nobg, bg_path, aspect_ratio="16:9"):
     """Resize bg to canvas size, scale fg proportionally, centre and paste."""
-    if aspect_ratio == "9:16":
-        canvas_w, canvas_h = 1080, 1920
-        target_h = int(canvas_h * 0.55)
-        safe_zone_bottom = 350
-    else:
-        # Default to 16:9
-        canvas_w, canvas_h = 1920, 1080
-        target_h = int(canvas_h * 0.70)
-        safe_zone_bottom = 150
+    canvas_w, canvas_h, target_h, safe_zone_bottom = get_canvas_size(aspect_ratio)
 
-    bg_img = Image.open(bg_path).resize(
+    bg_img = Image.open(bg_path).convert("RGBA").resize(
         (canvas_w, canvas_h),
         Image.Resampling.LANCZOS
     )
@@ -147,7 +201,7 @@ def composite(fg_nobg, bg_path, aspect_ratio="16:9"):
     scale = target_h / fg_h
 
     fg_resized = fg_nobg.resize(
-        (int(fg_w * scale), target_h),
+        (int(round(fg_w * scale)), target_h),
         Image.Resampling.LANCZOS
     )
 
@@ -155,8 +209,8 @@ def composite(fg_nobg, bg_path, aspect_ratio="16:9"):
         scale_w = (canvas_w * 0.85) / fg_resized.width
         fg_resized = fg_resized.resize(
             (
-                int(fg_resized.width * scale_w),
-                int(fg_resized.height * scale_w)
+                int(round(fg_resized.width * scale_w)),
+                int(round(fg_resized.height * scale_w))
             ),
             Image.Resampling.LANCZOS
         )
@@ -178,8 +232,25 @@ def composite(fg_nobg, bg_path, aspect_ratio="16:9"):
 # ─────────────────────────────────────────────
 
 def main():
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("  python remove_bg.py <input_fg> <output> <mode> [<input_bg>] [<aspect_ratio>] [<threshold>]")
+        print("  python remove_bg.py --prepare-bg <input_bg> <output_bg> [<aspect_ratio>]")
+        sys.exit(1)
+
+    # ── Subcommand: prepare background only ──
+    if sys.argv[1] == "--prepare-bg":
+        if len(sys.argv) < 4:
+            print("Usage: python remove_bg.py --prepare-bg <input_bg> <output_bg> [<aspect_ratio>]")
+            sys.exit(1)
+        bg_in = sys.argv[2]
+        bg_out = sys.argv[3]
+        aspect_ratio = "9:16" if "9:16" in sys.argv else "16:9"
+        prepare_background(bg_in, bg_out, aspect_ratio)
+        sys.exit(0)
+
     if len(sys.argv) < 4:
-        print("Usage: python remove_bg.py <input_fg> <output> <mode> [<input_bg>] [<threshold>]")
+        print("Usage: python remove_bg.py <input_fg> <output> <mode> [<input_bg>] [<aspect_ratio>] [<threshold>]")
         print("  mode: whitekey | ai")
         sys.exit(1)
 
@@ -188,19 +259,21 @@ def main():
     mode      = sys.argv[3]
     bg_path   = None
     threshold = 215.0
+    aspect_ratio = "9:16" if "9:16" in sys.argv else "16:9"
 
-    # Parse optional args
-    if len(sys.argv) == 5:
-        try:
-            threshold = float(sys.argv[4])
-        except ValueError:
-            bg_path = sys.argv[4]
-    elif len(sys.argv) >= 6:
-        bg_path = sys.argv[4]
-        try:
-            threshold = float(sys.argv[5])
-        except ValueError:
-            pass
+    # Parse optional arguments
+    for arg in sys.argv[4:]:
+        if arg in ("16:9", "9:16"):
+            aspect_ratio = arg
+        elif arg.lower() in ("--nobg", "nobg", "none"):
+            bg_path = None
+        elif os.path.exists(arg) and not bg_path:
+            bg_path = arg
+        else:
+            try:
+                threshold = float(arg)
+            except ValueError:
+                pass
 
     # Load foreground
     try:
@@ -226,13 +299,15 @@ def main():
     # Save result
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     try:
-        aspect_ratio = "9:16" if "9:16" in sys.argv else "16:9"
         if bg_path and os.path.exists(bg_path):
             print(f"Compositing onto background: {bg_path} (aspect ratio: {aspect_ratio})")
             result = composite(fg_nobg, bg_path, aspect_ratio)
             result.save(out_path, format="PNG")
         else:
-            fg_nobg.save(out_path, format="PNG")
+            # Place foreground on transparent video canvas and save as PNG
+            print(f"Placing on transparent canvas (aspect ratio: {aspect_ratio}) ...")
+            transparent_scene = create_transparent_scene(fg_nobg, aspect_ratio)
+            transparent_scene.save(out_path, format="PNG")
         print(f"Saved -> {out_path}")
     except Exception as e:
         print(f"Error saving output: {e}")

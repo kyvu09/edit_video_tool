@@ -270,15 +270,12 @@ function escapeASS(text) {
 }
 
 // ── Keyword Emphasis ─────────────────────────────────────────────────────────
-// Highlights ALL-CAPS sequences of 3+ ASCII letters in gold + bold.
 function applyKeywordEmphasis(text) {
-  return text.replace(/\b[A-Z]{3,}\b/g, (match) => {
-    return `{\\c&H0000D7FF&\\b1}${match}{\\c&H00FFFFFF&\\b0}`;
-  });
+  return text; // Pure white text with thick black outline
 }
 
 // ── Split plain text into chunks ──────────────────────────────────────────────
-function splitTextIntoChunks(text, maxChars = 40) {
+function splitTextIntoChunks(text, maxChars = 22) {
   const words = String(text).trim().split(/\s+/).filter(Boolean);
   const chunks = [];
   let currentChunk = [];
@@ -311,7 +308,7 @@ function splitTextIntoChunks(text, maxChars = 40) {
 }
 
 // ── Wrap text for ASS display ────────────────────────────────────────────────
-function wrapText(text, maxCharsPerLine = 18, maxLines = 2) {
+function wrapText(text, maxCharsPerLine = 22, maxLines = 2) {
   const words = String(text).trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return [''];
 
@@ -341,14 +338,14 @@ function wrapText(text, maxCharsPerLine = 18, maxLines = 2) {
   return lines.slice(0, maxLines);
 }
 
-function buildStyledAssText(text, maxCharsPerLine = 18, maxLines = 2) {
-  return wrapText(text, maxCharsPerLine, maxLines)
-    .map(line => applyKeywordEmphasis(escapeASS(line)))
+function buildStyledAssText(text, maxCharsPerLine = 22, maxLines = 2) {
+  return wrapText(String(text).toUpperCase(), maxCharsPerLine, maxLines)
+    .map(line => escapeASS(line))
     .join('\\N');
 }
 
 // ── Chunk the entire timeline to max characters per subtitle ────────────────
-function chunkTimeline(timeline, wordTimestamps, maxChars = 40) {
+function chunkTimeline(timeline, wordTimestamps, maxChars = 22) {
   const newTimeline = [];
 
   timeline.forEach((item) => {
@@ -472,26 +469,24 @@ function getOrCreateWords(item) {
 function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = '16:9', enableKaraokeEffect = true) {
   let playResX = 1920;
   let playResY = 1080;
-  let fontSize = 48;
-  let marginV = 50; // Increased to move subtitles higher
-  let outline = 4;
-  let shadow = 2;
-  let bold = 0;
-  let maxChars = 70;        // max chars per subtitle chunk (fit on 1 line)
-  let maxCharsPerLine = 70; // prevent line wrapping
-  let zoomScale = 105;
+  let fontSize = 46;
+  let marginV = 70;
+  let outline = 6;
+  let shadow = 0;
+  let bold = 1;
+  let maxChars = 32;        // short punchy phrases
+  let maxCharsPerLine = 32;
 
   if (aspectRatio === '9:16') {
     playResX = 1080;
     playResY = 1920;
-    fontSize = 48;
-    marginV = 140; // Increased to move subtitles higher
-    outline = 3;
-    shadow = 1;
+    fontSize = 46;
+    marginV = 180;
+    outline = 5;
+    shadow = 0;
     bold = 1;
-    maxChars = 32;        // fit on 1 line for portrait
-    maxCharsPerLine = 32; // prevent line wrapping
-    zoomScale = 105;
+    maxChars = 32;        // short punchy phrases for portrait
+    maxCharsPerLine = 32;
   }
 
   const header = `[Script Info]
@@ -505,7 +500,7 @@ YCbCr Matrix: None
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,${fontSize},&H00FFFFFF,&H00888888,&H00000000,&HC8000000,${bold},0,0,0,100,100,1.5,0,1,${outline},${shadow},2,80,80,${marginV},1
+Style: Default,Arial,${fontSize},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,${bold},0,0,0,100,100,1.5,0,1,${outline},${shadow},2,40,40,${marginV},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -514,7 +509,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 // ── Global Alignment: align FULL script against ALL word timestamps at once ───
 // This is the most accurate approach: timing comes 100% from Whisper,
 // no scene-boundary filtering that could mismatch words to wrong time windows.
-function buildEventsFromGlobalAlignment(allScriptText, wordTimestamps, maxChars, maxCharsPerLine, zoomScale, bold, enableKaraokeEffect) {
+function buildEventsFromGlobalAlignment(allScriptText, wordTimestamps, maxChars, maxCharsPerLine, bold, enableKaraokeEffect) {
   if (!wordTimestamps || wordTimestamps.length === 0) return null;
 
   const audioStart = wordTimestamps[0].start;
@@ -547,80 +542,70 @@ function buildEventsFromGlobalAlignment(allScriptText, wordTimestamps, maxChars,
   chunks.forEach((chunk) => {
     const chunkStart = chunk[0].start;
     const chunkEnd   = chunk[chunk.length - 1].end;
-    const chunkDur   = Math.max(0.05, chunkEnd - chunkStart);
 
-    // ── Build line layout for consistent display within this chunk ────────────
+    // Convert all words in chunk to UPPERCASE
+    const upperChunk = chunk.map((w, idx) => ({
+      word: String(w.word).toUpperCase(),
+      start: w.start,
+      end: w.end,
+      index: idx
+    }));
+
+    // Build line layout for consistent display within this chunk
     const lines = [[]];
     let lineLen = 0;
-    chunk.forEach((w, idx) => {
+    upperChunk.forEach((w) => {
       const space = lines[lines.length - 1].length > 0 ? 1 : 0;
       if (lineLen + space + w.word.length > maxCharsPerLine && lines[lines.length - 1].length > 0) {
-        lines.push([{ word: w.word, index: idx }]);
+        lines.push([w]);
         lineLen = w.word.length;
       } else {
-        lines[lines.length - 1].push({ word: w.word, index: idx });
+        lines[lines.length - 1].push(w);
         lineLen += space + w.word.length;
       }
     });
 
-    // Helper: render the chunk text with one word optionally highlighted,
-    // and a zoom-out animation anchored to [chunkStart, chunkEnd].
-    const renderChunkText = (eventStart, highlightIdx) => {
-      const progress     = chunkDur > 0 ? (eventStart - chunkStart) / chunkDur : 0;
-      const currentScale = zoomScale - (zoomScale - 100) * progress;
-      const startOff     = Math.round((chunkStart - eventStart) * 1000);
-      const endOff       = Math.round((chunkEnd   - eventStart) * 1000);
-      const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOff},${endOff},\\fscx100\\fscy100)}`;
-
-      const formattedLines = lines.map(line =>
-        line.map(wItem => {
-          const esc = escapeASS(wItem.word);
-          if (enableKaraokeEffect && wItem.index === highlightIdx) {
-            return `{\\c&H0000D7FF&\\b1}${esc}{\\c&H00FFFFFF&\\b${bold}}`;
-          }
-          return esc;
-        }).join(' ')
-      );
-      return anim + formattedLines.join('\\N');
+    const renderTypewriterText = (activeIdx) => {
+      return lines.map(line => {
+        const vis = line.filter(w => w.index <= activeIdx).map(w => escapeASS(w.word));
+        const hid = line.filter(w => w.index > activeIdx).map(w => escapeASS(w.word));
+        let res = '';
+        if (vis.length > 0) {
+          res += `{\\alpha&H00&}${vis.join(' ')}`;
+        }
+        if (hid.length > 0) {
+          if (vis.length > 0) res += ' ';
+          res += `{\\alpha&HFF&}${hid.join(' ')}`;
+        }
+        return res;
+      }).join('\\N');
     };
 
     if (!enableKaraokeEffect) {
-      // Static event for whole chunk — no word coloring
-      const start  = formatASS(chunkStart);
-      const end    = formatASS(chunkEnd);
-      const durMs  = Math.max(1, Math.round(chunkDur * 1000));
-      const anim   = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
-      const textStr = anim + lines.map(line => line.map(wItem => escapeASS(wItem.word)).join(' ')).join('\\N');
-      events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${textStr}\n`;
+      const start = formatASS(chunkStart);
+      const end = formatASS(chunkEnd);
+      events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${renderTypewriterText(upperChunk.length - 1)}\n`;
       return;
     }
 
-    // Karaoke: emit one ASS event per word (+ gap segments between words)
+    // Typewriter: reveal words one by one as they are spoken
     let currentTime = chunkStart;
+    upperChunk.forEach((wordObj, idx) => {
+      const isLast = idx === upperChunk.length - 1;
+      const nextWordStart = isLast ? chunkEnd : upperChunk[idx + 1].start;
+      const stepStart = currentTime;
+      const stepEnd = Math.max(stepStart + 0.04, nextWordStart);
 
-    chunk.forEach((wordObj, idx) => {
-      // Gap before this word
-      if (wordObj.start > currentTime + 0.04) {
-        const s = formatASS(currentTime);
-        const e = formatASS(wordObj.start);
-        events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderChunkText(currentTime, -1)}\n`;
-        currentTime = wordObj.start;
-      }
-
-      // Word highlight segment
-      const wStart = Math.max(currentTime, wordObj.start);
-      const wEnd   = Math.max(wStart + 0.04, wordObj.end);
-      const s      = formatASS(wStart);
-      const e      = formatASS(wEnd);
-      events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderChunkText(wStart, idx)}\n`;
-      currentTime = wEnd;
+      const s = formatASS(stepStart);
+      const e = formatASS(stepEnd);
+      events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderTypewriterText(idx)}\n`;
+      currentTime = stepEnd;
     });
 
-    // Trailing silence at end of chunk
     if (chunkEnd > currentTime + 0.04) {
       const s = formatASS(currentTime);
       const e = formatASS(chunkEnd);
-      events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderChunkText(currentTime, -1)}\n`;
+      events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderTypewriterText(upperChunk.length - 1)}\n`;
     }
   });
 
@@ -635,7 +620,7 @@ function buildEventsFromGlobalAlignment(allScriptText, wordTimestamps, maxChars,
   if (wordTimestamps && wordTimestamps.length > 0) {
     const allScriptText = timeline.map(item => String(item.text).trim()).join(' ');
     const globalEvents = buildEventsFromGlobalAlignment(
-      allScriptText, wordTimestamps, maxChars, maxCharsPerLine, zoomScale, bold, enableKaraokeEffect
+      allScriptText, wordTimestamps, maxChars, maxCharsPerLine, bold, enableKaraokeEffect
     );
     if (globalEvents !== null) {
       console.log('[SubtitleGen] ✅ Using global word alignment for accurate subtitle sync.');
@@ -653,103 +638,69 @@ function buildEventsFromGlobalAlignment(allScriptText, wordTimestamps, maxChars,
     chunked.forEach((item) => {
       const words = getOrCreateWords(item);
 
-      if (!enableKaraokeEffect) {
-        const start = formatASS(item.start);
-        const end = formatASS(item.end);
-        const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
-        const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
-        const text = `${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}`;
-        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}\n`;
-        return;
-      }
-
       if (words.length > 0) {
-        const segments = [];
-        let currentTime = item.start;
+        const upperWords = words.map((w, idx) => ({
+          word: String(w.word).toUpperCase(),
+          start: w.start,
+          end: w.end,
+          index: idx
+        }));
 
-        words.forEach((wordObj, idx) => {
-          if (wordObj.start > currentTime) {
-            const gapDuration = wordObj.start - currentTime;
-            if (gapDuration >= 0.05) {
-              segments.push({ start: currentTime, end: wordObj.start, highlightIndex: -1 });
-              segments.push({ start: wordObj.start, end: wordObj.end, highlightIndex: idx });
-            } else {
-              segments.push({ start: currentTime, end: wordObj.end, highlightIndex: idx });
-            }
+        const lines = [[]];
+        let lineLen = 0;
+        upperWords.forEach((w) => {
+          const space = lines[lines.length - 1].length > 0 ? 1 : 0;
+          if (lineLen + space + w.word.length > maxCharsPerLine && lines[lines.length - 1].length > 0) {
+            lines.push([w]);
+            lineLen = w.word.length;
           } else {
-            const start = Math.max(currentTime, wordObj.start);
-            const end = Math.max(start, wordObj.end);
-            if (end > start) segments.push({ start, end, highlightIndex: idx });
-          }
-          if (segments.length > 0) {
-            currentTime = segments[segments.length - 1].end;
-          } else {
-            currentTime = wordObj.end;
+            lines[lines.length - 1].push(w);
+            lineLen += space + w.word.length;
           }
         });
 
-        if (item.end > currentTime) {
-          const gapDuration = item.end - currentTime;
-          if (gapDuration >= 0.05) {
-            segments.push({ start: currentTime, end: item.end, highlightIndex: -1 });
-          } else if (segments.length > 0) {
-            segments[segments.length - 1].end = item.end;
-          }
+        const renderTypewriterText = (activeIdx) => {
+          return lines.map(line => {
+            const vis = line.filter(w => w.index <= activeIdx).map(w => escapeASS(w.word));
+            const hid = line.filter(w => w.index > activeIdx).map(w => escapeASS(w.word));
+            let res = '';
+            if (vis.length > 0) res += `{\\alpha&H00&}${vis.join(' ')}`;
+            if (hid.length > 0) {
+              if (vis.length > 0) res += ' ';
+              res += `{\\alpha&HFF&}${hid.join(' ')}`;
+            }
+            return res;
+          }).join('\\N');
+        };
+
+        if (!enableKaraokeEffect) {
+          const start = formatASS(item.start);
+          const end = formatASS(item.end);
+          events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${renderTypewriterText(upperWords.length - 1)}\n`;
+          return;
         }
 
-        segments.forEach((seg) => {
-          const eventStart = seg.start;
-          const duration = Math.max(0.05, seg.end - eventStart);
-          const start = formatASS(eventStart);
-          const end = formatASS(eventStart + duration);
-
-          const chunkDur = item.end - item.start;
-          const progress = chunkDur > 0 ? (eventStart - item.start) / chunkDur : 0;
-          const currentScale = zoomScale - (zoomScale - 100) * progress;
-          const startOffset = Math.round((item.start - eventStart) * 1000);
-          const endOffset = Math.round((item.end - eventStart) * 1000);
-          const anim = `{\\fscx${Math.round(currentScale)}\\fscy${Math.round(currentScale)}\\t(${startOffset},${endOffset},\\fscx100\\fscy100)}`;
-
-          const lines = [];
-          let currentLine = [];
-          let currentLength = 0;
-          words.forEach((w, idx) => {
-            const spaceNeeded = currentLine.length > 0 ? 1 : 0;
-            if (currentLength + spaceNeeded + w.word.length > maxCharsPerLine) {
-              if (currentLine.length > 0) {
-                lines.push(currentLine);
-                currentLine = [{ word: w.word, index: idx }];
-                currentLength = w.word.length;
-              } else {
-                lines.push([{ word: w.word, index: idx }]);
-                currentLine = [];
-                currentLength = 0;
-              }
-            } else {
-              currentLine.push({ word: w.word, index: idx });
-              currentLength += spaceNeeded + w.word.length;
-            }
-          });
-          if (currentLine.length > 0) lines.push(currentLine);
-
-          const formattedLines = lines.map(line =>
-            line.map(wItem => {
-              const escWord = escapeASS(wItem.word);
-              if (enableKaraokeEffect && wItem.index === seg.highlightIndex) {
-                return `{\\c&H0000D7FF&\\b1}${escWord}{\\c&H00FFFFFF&\\b${bold}}`;
-              }
-              return escWord;
-            }).join(' ')
-          );
-
-          events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${anim}${formattedLines.join('\\N')}\n`;
+        let currentTime = item.start;
+        upperWords.forEach((wordObj, idx) => {
+          const isLast = idx === upperWords.length - 1;
+          const nextWordStart = isLast ? item.end : upperWords[idx + 1].start;
+          const stepStart = currentTime;
+          const stepEnd = Math.max(stepStart + 0.04, nextWordStart);
+          const s = formatASS(stepStart);
+          const e = formatASS(stepEnd);
+          events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderTypewriterText(idx)}\n`;
+          currentTime = stepEnd;
         });
+
+        if (item.end > currentTime + 0.04) {
+          const s = formatASS(currentTime);
+          const e = formatASS(item.end);
+          events += `Dialogue: 0,${s},${e},Default,,0,0,0,,${renderTypewriterText(upperWords.length - 1)}\n`;
+        }
       } else {
         const start = formatASS(item.start);
         const end = formatASS(item.end);
-        const durMs = Math.max(1, Math.round((item.end - item.start) * 1000));
-        const anim = `{\\fscx${zoomScale}\\fscy${zoomScale}\\t(0,${durMs},\\fscx100\\fscy100)}`;
-        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,${anim}${buildStyledAssText(item.text, maxCharsPerLine, 2)}\n`;
+        events += `Dialogue: 0,${start},${end},Default,,0,0,0,,{\\alpha&H00&}${escapeASS(String(item.text).toUpperCase())}\n`;
       }
     });
   }

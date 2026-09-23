@@ -67,13 +67,14 @@ function getAtempoFilter(speed) {
 }
 
 // ── Main render function ──────────────────────────────────────────────────────
-async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspectRatio = '16:9', bgmPath = null, bgmVolume = 0.3, speed = 1.0, onProgress) {
+async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspectRatio = '16:9', bgmPath = null, bgmVolume = 0.3, speed = 1.0, onProgress, fixedBgPath = null) {
   // Gracefully handle dynamic arguments to keep backward compatibility
   let finalAspectRatio = aspectRatio;
   let finalBgmPath = bgmPath;
   let finalBgmVolume = bgmVolume;
   let finalSpeed = speed;
   let finalOnProgress = onProgress;
+  let finalFixedBgPath = fixedBgPath;
 
   if (typeof finalAspectRatio === 'function') {
     finalOnProgress = finalAspectRatio;
@@ -100,6 +101,7 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
   aspectRatio = finalAspectRatio;
   bgmPath = finalBgmPath;
   bgmVolume = finalBgmVolume;
+  fixedBgPath = finalFixedBgPath ? path.resolve(finalFixedBgPath) : null;
 
   if (!timeline || timeline.length === 0) {
     throw new Error('Empty timeline');
@@ -113,7 +115,7 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
   const sceneVideos = [];
 
   try {
-    // ── Step A: Render each scene with zoom + crossfade ──────────────────────
+    // ── Step A: Render each scene ───────────────────────────────────────────
     for (let idx = 0; idx < timeline.length; idx++) {
       const item      = timeline[idx];
       const imagePath = path.resolve(item.image);
@@ -124,18 +126,44 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
         onProgress({ step: 'rendering_scene', current: idx, total: timeline.length });
       }
 
-      const vf = buildSceneFilter(item.duration, aspectRatio, FPS);
-      // -framerate 30 on input ensures stable frame supply to zoompan
-      const cmd = [
-        `"${ffmpegPath}"`,
-        `-y -framerate ${FPS} -loop 1 -i "${imagePath}"`,
-        `-vf "${vf}"`,
-        `-t ${item.duration} -r ${FPS}`,
-        `-c:v libx264 -preset fast -pix_fmt yuv420p`,
-        `"${tempVideo}"`
-      ].join(' ');
+      if (fixedBgPath && fs.existsSync(fixedBgPath)) {
+        // Mode: 1 Fixed Background underneath + Transparent PNG scene overlaid on top
+        const fadeDur = Math.min(0.25, item.duration / 4).toFixed(3);
+        const fadeOutSt = Math.max(0, item.duration - parseFloat(fadeDur)).toFixed(3);
 
-      await execAsync(cmd);
+        const filterComplex = [
+          `[0:v]format=yuv420p[bg]`,
+          `[1:v]format=rgba,fade=t=in:st=0:d=${fadeDur}:alpha=1,fade=t=out:st=${fadeOutSt}:d=${fadeDur}:alpha=1[fg]`,
+          `[bg][fg]overlay=0:0[v]`
+        ].join(';');
+
+        const cmd = [
+          `"${ffmpegPath}"`,
+          `-y -framerate ${FPS} -loop 1 -t ${item.duration} -i "${fixedBgPath}"`,
+          `-framerate ${FPS} -loop 1 -t ${item.duration} -i "${imagePath}"`,
+          `-filter_complex "${filterComplex}"`,
+          `-map "[v]"`,
+          `-t ${item.duration} -r ${FPS}`,
+          `-c:v libx264 -preset fast -pix_fmt yuv420p`,
+          `"${tempVideo}"`
+        ].join(' ');
+
+        await execAsync(cmd);
+      } else {
+        // Mode: Original fallback (zoompan + crossfade on full image)
+        const vf = buildSceneFilter(item.duration, aspectRatio, FPS);
+        // -framerate 30 on input ensures stable frame supply to zoompan
+        const cmd = [
+          `"${ffmpegPath}"`,
+          `-y -framerate ${FPS} -loop 1 -i "${imagePath}"`,
+          `-vf "${vf}"`,
+          `-t ${item.duration} -r ${FPS}`,
+          `-c:v libx264 -preset fast -pix_fmt yuv420p`,
+          `"${tempVideo}"`
+        ].join(' ');
+
+        await execAsync(cmd);
+      }
     }
 
     // ── Step B: Concatenate scenes + mix audio ────────────────────────────────
