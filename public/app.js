@@ -106,6 +106,7 @@ if (scriptInput && scriptFileName) {
 const bgSelectorInput = document.getElementById('backgroundImage');
 const bgModeSection = document.getElementById('bgModeSection');
 const bgImageFileName = document.getElementById('bgImageFileName');
+
 if (bgSelectorInput) {
     bgSelectorInput.addEventListener('change', () => {
         if (bgSelectorInput.files[0]) {

@@ -474,8 +474,8 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
   let outline = 6;
   let shadow = 0;
   let bold = 1;
-  let maxChars = 32;        // short punchy phrases
-  let maxCharsPerLine = 32;
+  let maxChars = 50;        // short punchy phrases
+  let maxCharsPerLine = 50;
 
   if (aspectRatio === '9:16') {
     playResX = 1080;

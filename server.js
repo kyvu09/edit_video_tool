@@ -73,9 +73,9 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
         filename: path.basename(p),
         url: `/download/${sessionId}/${path.basename(p)}`
       }));
-      sessions[sessionId].statusMessage = 'Tách nền các scene & chuẩn bị background cố định hoàn tất.';
+      sessions[sessionId].statusMessage = 'Chuẩn bị background cố định & các scene hoàn tất.';
     } else {
-      sessions[sessionId].statusMessage = 'Bỏ qua tách nền (Không upload ảnh background).';
+      sessions[sessionId].statusMessage = 'Bỏ qua nền cố định (Không upload ảnh background).';
     }
     sessions[sessionId].progress = 20;
 
@@ -239,8 +239,8 @@ app.post('/api/upload', upload.any(), async (req, res) => {
     const imageFiles = req.files ? req.files.filter(f => f.fieldname === 'images') : [];
     const bgFiles = req.files ? req.files.filter(f => f.fieldname === 'backgroundImage') : [];
     const bgmFiles = req.files ? req.files.filter(f => f.fieldname === 'bgm') : [];
-    const backgroundMode = req.body.backgroundMode || 'whitekey';
     const aspectRatio = req.body.aspectRatio || '16:9';
+    const backgroundMode = req.body.backgroundMode || 'whitekey';
     const bgmVolume = req.body.bgmVolume !== undefined ? parseFloat(req.body.bgmVolume) : 30;
     const videoSpeed = req.body.videoSpeed !== undefined ? parseFloat(req.body.videoSpeed) : 1.0;
     const enableKaraokeEffect = req.body.enableKaraokeEffect !== '0'; // default true

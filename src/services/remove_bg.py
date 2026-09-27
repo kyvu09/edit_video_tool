@@ -129,7 +129,8 @@ def postprocess_rembg(img, erode_px=1, feather_px=2):
 def get_canvas_size(aspect_ratio="16:9"):
     if aspect_ratio == "9:16":
         return 1080, 1920, int(1920 * 0.55), 350
-    return 1920, 1080, int(1080 * 0.70), 150
+    # 16:9 Long Video: Target height ~60% canvas height, 180px safe-zone at bottom for subtitles
+    return 1920, 1080, int(1080 * 0.60), 180
 
 
 def prepare_background(bg_path, out_path, aspect_ratio="16:9"):
@@ -170,8 +171,9 @@ def create_transparent_scene(fg_nobg, aspect_ratio="16:9"):
         Image.Resampling.LANCZOS
     )
 
-    if fg_resized.width > canvas_w * 0.85:
-        scale_w = (canvas_w * 0.85) / fg_resized.width
+    max_w = canvas_w * (0.80 if aspect_ratio == "16:9" else 0.85)
+    if fg_resized.width > max_w:
+        scale_w = max_w / fg_resized.width
         fg_resized = fg_resized.resize(
             (
                 int(round(fg_resized.width * scale_w)),

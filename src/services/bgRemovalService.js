@@ -33,7 +33,15 @@ async function processBackgrounds(imagePaths, backgroundPath, sessionDir, mode =
     aspectRatio = '16:9';
   }
 
-  const pythonPath = process.env.PYTHON_PATH || 'python';
+  const venvPythonWin = path.resolve(__dirname, '../../.venv/Scripts/python.exe');
+  const venvPythonUnix = path.resolve(__dirname, '../../.venv/bin/python');
+  let defaultPython = 'python';
+  if (fs.existsSync(venvPythonWin)) {
+    defaultPython = venvPythonWin;
+  } else if (fs.existsSync(venvPythonUnix)) {
+    defaultPython = venvPythonUnix;
+  }
+  const pythonPath = process.env.PYTHON_PATH || defaultPython;
   const scriptPath = path.resolve(__dirname, 'remove_bg.py');
   
   let fixedBgPath = null;
@@ -61,6 +69,7 @@ async function processBackgrounds(imagePaths, backgroundPath, sessionDir, mode =
 
   const nobgPaths = [];
   const total = imagePaths.length;
+  const activeMode = (mode === 'rembg' || mode === 'ai') ? 'ai' : 'whitekey';
 
   // Step 0b: Process each scene image - remove background and save as transparent PNG on canvas
   for (let idx = 0; idx < total; idx++) {
@@ -78,7 +87,7 @@ async function processBackgrounds(imagePaths, backgroundPath, sessionDir, mode =
       `"${scriptPath}"`,
       `"${fgPath}"`,
       `"${outPath}"`,
-      `"${mode}"`,
+      `"${activeMode}"`,
       `--nobg`,
       `"${aspectRatio}"`
     ];
