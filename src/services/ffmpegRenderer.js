@@ -127,13 +127,18 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
       }
 
       if (fixedBgPath && fs.existsSync(fixedBgPath)) {
-        // Mode: 1 Fixed Background underneath + Transparent PNG scene overlaid on top
-        const fadeDur = Math.min(0.25, item.duration / 4).toFixed(3);
+        // Mode: 1 Fixed Background underneath + Transparent PNG scene with zoompan animation from commit 687d3a4
+        const frames = Math.max(30, Math.round(item.duration * FPS));
+        const zoomInc = (0.06 / frames).toFixed(6);
+        const fadeDur = Math.min(0.4, item.duration / 3).toFixed(3);
         const fadeOutSt = Math.max(0, item.duration - parseFloat(fadeDur)).toFixed(3);
+        const size = aspectRatio === '9:16' ? '1080x1920' : '1920x1080';
+
+        const anim = `zoompan=z='max(1.06-${zoomInc}*on,1.0)':x='(iw-ow)/2':y='(ih-oh)/2':d=${frames}:s=${size}:fps=${FPS}`;
 
         const filterComplex = [
           `[0:v]format=yuv420p[bg]`,
-          `[1:v]format=rgba,fade=t=in:st=0:d=${fadeDur}:alpha=1,fade=t=out:st=${fadeOutSt}:d=${fadeDur}:alpha=1[fg]`,
+          `[1:v]format=rgba,${anim},fade=t=in:st=0:d=${fadeDur}:alpha=1,fade=t=out:st=${fadeOutSt}:d=${fadeDur}:alpha=1[fg]`,
           `[bg][fg]overlay=0:0[v]`
         ].join(';');
 
