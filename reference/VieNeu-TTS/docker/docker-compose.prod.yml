@@ -1,0 +1,26 @@
+services:
+  # ========================================================
+  # GPU Production Service
+  # ========================================================
+  gpu:
+    restart: unless-stopped
+    profiles: ["gpu"]
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    container_name: vieneu-tts-gpu
+    ports:
+      - "${PORT}:7860"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+      - ./output_audio:/workspace/output_audio
+    env_file:
+      - .env
+
+volumes:
+  huggingface_cache:

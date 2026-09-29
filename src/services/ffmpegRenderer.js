@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { exec } = require('child_process');
 
 const ffmpegPath  = process.env.FFMPEG_PATH  || 'ffmpeg';
@@ -67,6 +68,24 @@ function getAtempoFilter(speed) {
 }
 
 // ── Main render function ──────────────────────────────────────────────────────
+/**
+ * Chạy tối đa `concurrency` tasks cùng lúc.
+ * Dùng để render các scene FFmpeg song song.
+ */
+async function runParallel(tasks, concurrency) {
+  const results = new Array(tasks.length);
+  let index = 0;
+  async function worker() {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  }
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspectRatio = '16:9', bgmPath = null, bgmVolume = 0.3, speed = 1.0, onProgress, fixedBgPath = null) {
   // Gracefully handle dynamic arguments to keep backward compatibility
   let finalAspectRatio = aspectRatio;
@@ -111,37 +130,31 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
   const tempDir = path.join(path.dirname(outputPath), 'temp');
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-  // Collect paths for concat file
-  const sceneVideos = [];
+  // Collect paths for concat file (pre-sized so parallel tasks can write by index)
+  const sceneVideos = new Array(timeline.length).fill(null);
 
   try {
-    // ── Step A: Render each scene ───────────────────────────────────────────
-    for (let idx = 0; idx < timeline.length; idx++) {
-      const item      = timeline[idx];
+    // ── Step A: Render each scene in parallel ───────────────────────────────
+    const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 2));
+    console.log(`[FFmpeg] Rendering ${timeline.length} scenes (parallel, workers=${CONCURRENCY})`);
+
+    const sceneTasks = timeline.map((item, idx) => async () => {
       const imagePath = path.resolve(item.image);
       const tempVideo = path.join(tempDir, `scene_${idx}.mp4`);
-      sceneVideos.push(tempVideo);
-
-      if (onProgress) {
-        onProgress({ step: 'rendering_scene', current: idx, total: timeline.length });
-      }
 
       if (fixedBgPath && fs.existsSync(fixedBgPath)) {
-        // Mode: 1 Fixed Background underneath + Transparent PNG scene with zoompan animation from commit 687d3a4
+        // Mode: Fixed Background underneath + Transparent PNG scene with zoompan animation
         const frames = Math.max(30, Math.round(item.duration * FPS));
         const zoomInc = (0.06 / frames).toFixed(6);
         const fadeDur = Math.min(0.4, item.duration / 3).toFixed(3);
         const fadeOutSt = Math.max(0, item.duration - parseFloat(fadeDur)).toFixed(3);
         const size = aspectRatio === '9:16' ? '1080x1920' : '1920x1080';
-
         const anim = `zoompan=z='max(1.06-${zoomInc}*on,1.0)':x='(iw-ow)/2':y='(ih-oh)/2':d=${frames}:s=${size}:fps=${FPS}`;
-
         const filterComplex = [
           `[0:v]format=yuv420p[bg]`,
           `[1:v]format=rgba,${anim},fade=t=in:st=0:d=${fadeDur}:alpha=1,fade=t=out:st=${fadeOutSt}:d=${fadeDur}:alpha=1[fg]`,
           `[bg][fg]overlay=0:0[v]`
         ].join(';');
-
         const cmd = [
           `"${ffmpegPath}"`,
           `-y -framerate ${FPS} -loop 1 -t ${item.duration} -i "${fixedBgPath}"`,
@@ -152,7 +165,6 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
           `-c:v libx264 -preset fast -pix_fmt yuv420p`,
           `"${tempVideo}"`
         ].join(' ');
-
         await execAsync(cmd);
       } else {
         // Mode: Original fallback (zoompan + crossfade on full image)
@@ -166,10 +178,16 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
           `-c:v libx264 -preset fast -pix_fmt yuv420p`,
           `"${tempVideo}"`
         ].join(' ');
-
         await execAsync(cmd);
       }
-    }
+
+      if (onProgress) {
+        onProgress({ step: 'rendering_scene', current: idx, total: timeline.length });
+      }
+      sceneVideos[idx] = tempVideo;
+    });
+
+    await runParallel(sceneTasks, CONCURRENCY);
 
     // ── Step B: Concatenate scenes + mix audio ────────────────────────────────
     if (onProgress) onProgress({ step: 'concatenating' });

@@ -8,24 +8,31 @@ const fs = require('fs');
 // Load env variables
 dotenv.config();
 
-// Import modules
-const whisperService = require('./src/services/whisperService');
-const scriptParser = require('./src/services/scriptParser');
+// ── Utilities & Middleware ────────────────────────────────────────────────────
+const logger          = require('./src/utils/logger');
+const { rateLimiter } = require('./src/middleware/rateLimiter');
+const { persistSession, restoreSessions } = require('./src/services/sessionPersist');
+const { cleanupOldSessions } = require('./src/services/cleanupService');
+const createSseRoutes = require('./src/routes/sseRoutes');
+
+// ── Core Services ─────────────────────────────────────────────────────────────
+const whisperService    = require('./src/services/whisperService');
+const scriptParser      = require('./src/services/scriptParser');
 const timelineGenerator = require('./src/services/timelineGenerator');
 const subtitleGenerator = require('./src/services/subtitleGenerator');
-const ffmpegRenderer = require('./src/services/ffmpegRenderer');
-const bgRemovalService = require('./src/services/bgRemovalService');
-const geminiService = require('./src/services/geminiService');
-const geminiKeyManager = require('./src/services/geminiKeyManager');
-const youtubeService = require('./src/services/youtubeService');
-const imageQueue = require('./src/services/imageQueue');
-const sessionManager = require('./src/services/sessionManager');
-
+const ffmpegRenderer    = require('./src/services/ffmpegRenderer');
+const bgRemovalService  = require('./src/services/bgRemovalService');
+const geminiService     = require('./src/services/geminiService');
+const geminiKeyManager  = require('./src/services/geminiKeyManager');
+const youtubeService    = require('./src/services/youtubeService');
+const imageQueue        = require('./src/services/imageQueue');
+const sessionManager    = require('./src/services/sessionManager');
 
 const app = express();
 
-// In-memory store for session progress
+// In-memory store for video processing session progress
 const sessions = {};
+
 
 async function processVideoBackground(sessionId, files, sessionDir, backgroundMode = 'whitekey', aspectRatio = '16:9', bgmVolume = 30, videoSpeed = 1.0, enableKaraokeEffect = true) {
   const timeout = setTimeout(() => {
@@ -195,18 +202,20 @@ async function processVideoBackground(sessionId, files, sessionDir, backgroundMo
     sessions[sessionId].videoUrl = `/download/${sessionId}/output.mp4`;
     sessions[sessionId].previewUrl = `/api/video/${sessionId}`;
     sessions[sessionId].statusMessage = 'Video created successfully!';
-    console.log(`[Session ${sessionId}] Video created successfully!`);
+    persistSession(sessionDir, sessions[sessionId]);
+    logger.info(`[Session ${sessionId}] Video created successfully!`);
   } catch (error) {
-    console.error(`[Session ${sessionId}] Error:`, error);
+    logger.error(`[Session ${sessionId}] Error:`, error);
     sessions[sessionId].status = 'failed';
     sessions[sessionId].error = error.message;
     sessions[sessionId].statusMessage = `Error: ${error.message}`;
+    persistSession(sessionDir, sessions[sessionId]);
   } finally {
     clearTimeout(timeout);
   }
 }
 
-// Middleware
+// ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -216,7 +225,7 @@ const assetsDir = path.join(__dirname, 'assets');
 if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
 app.use('/assets', express.static(assetsDir));
 
-// Setup upload directories
+// Setup upload + output directories
 const uploadDir = path.join(__dirname, 'uploads');
 const outputDir = path.join(__dirname, 'output');
 
@@ -231,8 +240,20 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Routes
-app.post('/api/upload', upload.any(), async (req, res) => {
+// ── SSE progress stream ───────────────────────────────────────────────────────
+app.use(createSseRoutes(sessions));
+
+// ── Startup: restore persisted sessions + auto-cleanup old ones ───────────────
+restoreSessions(outputDir, sessions);
+cleanupOldSessions(outputDir, sessions).catch(err => logger.warn('[Startup] Cleanup error:', err.message));
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+
+// Rate limits
+const uploadRateLimit = rateLimiter({ windowMs: 10 * 60 * 1000, max: 10, message: 'Quá nhiều yêu cầu tạo video. Thử lại sau 10 phút.' });
+const ttsRateLimit    = rateLimiter({ windowMs: 60 * 1000,       max: 30, message: 'Quá nhiều yêu cầu TTS. Thử lại sau 1 phút.' });
+
+app.post('/api/upload', uploadRateLimit, upload.any(), async (req, res) => {
   try {
     const audioFiles = req.files ? req.files.filter(f => f.fieldname === 'audio') : [];
     const scriptFiles = req.files ? req.files.filter(f => f.fieldname === 'script') : [];
@@ -372,28 +393,6 @@ app.get('/api/youtube/auth', (req, res) => {
   }
 });
 
-app.get('/oauth2callback', async (req, res) => {
-  const code = req.query.code;
-  if (!code) {
-    return res.status(400).send('Missing code parameter');
-  }
-  try {
-    await youtubeService.handleCallback(code);
-    res.send(`
-      <script>
-        if (window.opener) {
-          window.opener.postMessage('youtube_auth_success', '*');
-          window.close();
-        } else {
-          window.location.href = '/';
-        }
-      </script>
-    `);
-  } catch (err) {
-    console.error('OAuth Callback Error:', err);
-    res.status(500).send('Authentication failed: ' + err.message);
-  }
-});
 
 app.get('/api/youtube/status', (req, res) => {
   try {
@@ -440,28 +439,18 @@ app.post('/api/youtube/upload', async (req, res) => {
 });
 // ------------------------------
 
-const flowAutomator = require('./src/services/flowAutomator');
-app.post('/api/flow-ai', async (req, res) => {
-  try {
-    const { prompt, isFirst, isLast } = req.body;
-    if (!prompt) return res.status(400).json({ error: 'Thiếu prompt' });
-    await flowAutomator.pastePromptToFlow(prompt, isFirst, isLast);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Flow Automation Error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-const localTtsService = require('./src/services/localTtsService');
+// flowAutomator.js đã được xóa (không còn dùng)
+
+const localTtsService   = require('./src/services/localTtsService');
 const viettelTtsService = require('./src/services/viettelTtsService');
-const voiceManager = require('./src/services/voiceManager');
+const voiceManager      = require('./src/services/voiceManager');
 
 const ttsUpload = multer({
   dest: path.join(__dirname, 'uploads'),
   limits: { fileSize: 25 * 1024 * 1024 }
 });
 
-app.post('/api/tts', (req, res, next) => {
+app.post('/api/tts', ttsRateLimit, (req, res, next) => {
   const contentType = req.headers['content-type'] || '';
   if (contentType.includes('multipart/form-data')) {
     ttsUpload.single('refAudioFile')(req, res, next);
@@ -1177,24 +1166,24 @@ app.get('/api/youtube/history', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  logger.info(`✅ Server running on http://localhost:${PORT}`);
 });
 
 // Global error handlers to prevent server crash
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  logger.error('❌ Uncaught Exception:', error);
   // Optionally restart or log to external service
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('📍 SIGTERM signal received: closing HTTP server');
+  logger.info('📍 SIGTERM signal received: closing HTTP server');
   server.close(() => {
-    console.log('✅ HTTP server closed');
+    logger.info('✅ HTTP server closed');
     process.exit(0);
   });
 });

@@ -4,6 +4,7 @@ import { initGoogleAuth, signIn, signOut, isSignedIn } from './services/googleAu
 import HomePage from './pages/HomePage';
 import LibraryPage from './pages/LibraryPage';
 import SchedulePage from './pages/SchedulePage';
+import CreatePage from './pages/CreatePage';
 
 // ⚠️ Thay bằng OAuth Client ID của bạn (tạo miễn phí tại Google Cloud Console)
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -25,6 +26,7 @@ function Layout({ children, authenticated, onSignIn, onSignOut }) {
             {authenticated && (
               <nav className="flex gap-2">
                 <NavLink to="/" end className={navClass}>Upload</NavLink>
+                <NavLink to="/create" className={navClass}>🎬 Tạo Video</NavLink>
                 <NavLink to="/library" className={navClass}>Library</NavLink>
                 <NavLink to="/schedule" className={navClass}>Schedule</NavLink>
               </nav>
@@ -117,6 +119,7 @@ export default function App() {
       >
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/create" element={<CreatePage />} />
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/schedule" element={<SchedulePage />} />
         </Routes>

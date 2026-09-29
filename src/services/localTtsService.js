@@ -123,6 +123,8 @@ async function generateSpeech(text, options = {}) {
                 }
 
                 const audioBuffer = await fs.promises.readFile(outputPath);
+                // Xóa file WAV tạm sau khi đã đọc vào buffer
+                fs.unlink(outputPath, (e) => { if (e) console.warn('[LocalTTS] Cleanup warn:', e.message); });
                 console.log(`[LocalTTS] Speech generated successfully (${audioBuffer.length} bytes, duration: ${result.duration || '?'}s)`);
                 resolve(audioBuffer);
             } catch (err) {

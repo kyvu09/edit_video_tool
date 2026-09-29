@@ -15,6 +15,22 @@ function execAsync(cmd) {
 }
 
 /**
+ * Runs tasks in parallel with bounded concurrency.
+ */
+async function runParallel(tasks, concurrency) {
+  const results = new Array(tasks.length);
+  let index = 0;
+  async function worker() {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker()));
+  return results;
+}
+
+/**
  * Process all foreground images: remove their background and save as transparent PNGs on canvas.
  * Also prepares a single fixed background image if provided.
  *
@@ -67,21 +83,16 @@ async function processBackgrounds(imagePaths, backgroundPath, sessionDir, mode =
     }
   }
 
-  const nobgPaths = [];
   const total = imagePaths.length;
   const activeMode = (mode === 'rembg' || mode === 'ai') ? 'ai' : 'whitekey';
 
-  // Step 0b: Process each scene image - remove background and save as transparent PNG on canvas
-  for (let idx = 0; idx < total; idx++) {
-    const fgPath = path.resolve(imagePaths[idx]);
+  const nobgPaths = new Array(total).fill(null);
+  const CONCURRENCY = Math.min(4, total); // max 4 Python processes to avoid RAM overload
+  const tasks = imagePaths.map((imgPath, idx) => async () => {
+    const fgPath = path.resolve(imgPath);
     const outPath = path.join(sessionDir, `scene_${idx}_nobg.png`);
-    nobgPaths.push(outPath);
+    nobgPaths[idx] = outPath;
 
-    if (onProgress) {
-      onProgress(idx, total);
-    }
-
-    // Command: python remove_bg.py <input_fg> <output> <mode> --nobg <aspect_ratio>
     const args = [
       `"${pythonPath}"`,
       `"${scriptPath}"`,
@@ -91,18 +102,19 @@ async function processBackgrounds(imagePaths, backgroundPath, sessionDir, mode =
       `--nobg`,
       `"${aspectRatio}"`
     ];
-
     const cmd = args.join(' ');
     console.log(`[Rembg Service] Processing scene ${idx + 1}/${total}: ${cmd}`);
-    
     try {
       await execAsync(cmd);
     } catch (err) {
       console.error(`[Rembg Service] Failed to process scene ${idx + 1}:`, err.message);
-      // Fallback: use original image if background removal fails
-      nobgPaths[idx] = fgPath;
+      nobgPaths[idx] = fgPath; // fallback to original
     }
-  }
+    if (onProgress) onProgress(idx, total);
+  });
+
+  // Step 0b: Remove background from each scene image — run in parallel
+  await runParallel(tasks, CONCURRENCY);
 
   // Attach fixedBgPath to returned array for convenience and backward compatibility
   nobgPaths.fixedBgPath = fixedBgPath;
