@@ -4,7 +4,7 @@ const axios = require('axios');
 const geminiKeyManager = require('./geminiKeyManager');
 
 const PROMPT_DIR = path.resolve(__dirname, '..', '..', 'prompt');
-const PROMPT_CREATE_PATH = path.join(PROMPT_DIR, 'prompt-create-scenes.md');
+const PROMPT_CREATE_PATH = path.join(PROMPT_DIR, 'prompt-create-scenes-02.md');
 const PROMPT_SEPARATE_PATH = path.join(PROMPT_DIR, 'prompt-separate-scenes.md');
 const PROMPT_METADATA_PATH = path.join(PROMPT_DIR, 'video-metadata.md');
 const PROMPT_EXTRACT_PATH = path.join(PROMPT_DIR, 'extract-content.md');

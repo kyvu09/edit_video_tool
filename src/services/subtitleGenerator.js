@@ -471,8 +471,8 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
   let playResY = 1080;
   let fontSize = 46;
   let marginV = 70;
-  let outline = 6;
-  let shadow = 0;
+  let outline = 2;
+  let shadow = 1;
   let bold = 1;
   let maxChars = 50;        // short punchy phrases
   let maxCharsPerLine = 50;
@@ -482,8 +482,8 @@ function generateASS(timeline, outputPath, wordTimestamps = null, aspectRatio = 
     playResY = 1920;
     fontSize = 46;
     marginV = 180;
-    outline = 5;
-    shadow = 0;
+    outline = 2;
+    shadow = 1;
     bold = 1;
     maxChars = 32;        // short punchy phrases for portrait
     maxCharsPerLine = 32;

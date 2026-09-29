@@ -29,6 +29,9 @@ function buildSceneFilter(duration, aspectRatio = '16:9', fps = 30) {
   const fadeOutSt  = Math.max(0, duration - parseFloat(fadeDur)).toFixed(3);
 
   const size = aspectRatio === '9:16' ? '1080x1920' : '1920x1080';
+  const upscaleW = aspectRatio === '9:16' ? 2160 : 3840;
+  const upscaleH = aspectRatio === '9:16' ? 3840 : 2160;
+  const upscaleSize = `${upscaleW}x${upscaleH}`;
 
   // 1. Normalization filters (scale and crop/pad)
   const normFilters = aspectRatio === '9:16'
@@ -36,8 +39,8 @@ function buildSceneFilter(duration, aspectRatio = '16:9', fps = 30) {
     : ['scale=1920:1080:force_original_aspect_ratio=decrease', 'pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black'];
 
   // 2. Define the animations
-  // Removed other camera movements (zoom-in, pans, push-up) per user request to keep only zoom-out
-  const anim = `zoompan=z='max(1.06-${zoomInc}*on,1.0)':x='(iw-ow)/2':y='(ih-oh)/2':d=${frames}:s=${size}:fps=${fps}`;
+  // Zoom out (1.06 -> 1.0) with 2x supersampling and center crop anchoring to prevent jitter & drift
+  const anim = `scale=${upscaleW}:${upscaleH},zoompan=z='max(1.06-${zoomInc}*on,1.0)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${upscaleSize}:fps=${fps},scale=${size.replace('x', ':')}`;
 
   // 3. Combine into final filter chain with fade transitions
   return [
@@ -149,7 +152,11 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
         const fadeDur = Math.min(0.4, item.duration / 3).toFixed(3);
         const fadeOutSt = Math.max(0, item.duration - parseFloat(fadeDur)).toFixed(3);
         const size = aspectRatio === '9:16' ? '1080x1920' : '1920x1080';
-        const anim = `zoompan=z='max(1.06-${zoomInc}*on,1.0)':x='(iw-ow)/2':y='(ih-oh)/2':d=${frames}:s=${size}:fps=${FPS}`;
+        const upscaleW = aspectRatio === '9:16' ? 2160 : 3840;
+        const upscaleH = aspectRatio === '9:16' ? 3840 : 2160;
+        const upscaleSize = `${upscaleW}x${upscaleH}`;
+
+        const anim = `scale=${upscaleW}:${upscaleH},zoompan=z='max(1.06-${zoomInc}*on,1.0)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${upscaleSize}:fps=${FPS},scale=${size.replace('x', ':')}`;
         const filterComplex = [
           `[0:v]format=yuv420p[bg]`,
           `[1:v]format=rgba,${anim},fade=t=in:st=0:d=${fadeDur}:alpha=1,fade=t=out:st=${fadeOutSt}:d=${fadeDur}:alpha=1[fg]`,
