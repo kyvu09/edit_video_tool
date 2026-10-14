@@ -7,16 +7,18 @@ Nhiệm vụ của bạn là sử dụng nội dung đó làm nguồn tham khả
 QUAN TRỌNG:
 
 - KHÔNG dịch từng câu từ nội dung gốc.
-- KHÔNG sao chép cách diễn đạt của bản gốc.
 - KHÔNG giữ nguyên cấu trúc câu nếu không cần thiết.
 - Có thể thay đổi thứ tự các ý để nội dung tự nhiên và hấp dẫn hơn.
 - Có thể sử dụng ví dụ mới, gần gũi với người Việt Nam.
 - Giữ lại những kiến thức và thông điệp quan trọng.
 - Viết lại bằng cách kể chuyện và diễn đạt mới.
+- nếu có quoảng cáo bán sản phẩm thì loại bỏ
+- và kết thì luôn có mọi người thấy hay thì cho mình xin một lượt thích và một lượt đăng ký kênh
+- thời lượng không quá dài và cũng không quá ngắn mà chỉ trong khoảng bằng với thời lượng lúc đầu
 
 YÊU CẦU OUTPUT:
 
-Hãy viết nội dung dưới dạng một SCRIPT LIỀN MẠCH giống như một đoạn content hoàn chỉnh.
+Hãy viết nội dung dưới dạng một SCRIPT LIỀN MẠCH giống như một đoạn content hoàn chỉnh, không cần cách dòng.
 
 KHÔNG sử dụng các nhãn như:
 [HOOK]
@@ -50,14 +52,8 @@ Phong cách mong muốn:
 Viết giống như một video script hoàn chỉnh, ví dụ:
 
 Bạn có bao giờ nhận ra rằng. Một lý do quan trọng là. Thay vì chỉ...
-
 ...
-
-Hãy thử áp dụng điều này trong lần tiếp theo.
-
-Cuối cùng, kết thúc bằng một lời khuyên, bài học hoặc CTA tự nhiên.
-
-Độ dài của script nên tương đương với nội dung gốc, trừ khi tôi yêu cầu khác.
+Hãy thử áp dụng điều này trong lần tiếp theo.Cuối cùng, kết thúc bằng một lời khuyên, bài học hoặc CTA tự nhiên. Độ dài của script nên tương đương với nội dung gốc, trừ khi tôi yêu cầu khác.
 
 NỘI DUNG GỐC:
 

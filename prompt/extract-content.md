@@ -3,7 +3,7 @@ Hãy xem và đọc toàn bộ nội dung của video từ đầu đến cuối,
 Yêu cầu:
 
 - Chỉ trả về **nội dung của video dưới dạng text**.
-- Không chia theo scene, timestamp hoặc mốc thời gian.
+- Không chia theo scene( tuyệt đối ko dùng secen 1: "nội dung", scene 2: "nôi dung 2", ...), timestamp hoặc mốc thời gian.
 - Không mô tả hình ảnh, góc quay hay chuyển cảnh.
 - Không thêm nhận xét, đánh giá hoặc phân tích của riêng bạn.
 - Không tự ý tóm tắt hoặc lược bỏ các ý quan trọng.

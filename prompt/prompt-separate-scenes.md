@@ -1,24 +1,24 @@
-From that content, output ONLY the script for each scene.
+Extract only the script content for each scene.
 
 Requirements:
 
-* Do not output "SCENE 1", "SCENE 2",...
-* Do not output "Script line:"
+Do not output lines like "SCENE 1", "SCENE 2", etc.
 
-* Do not output "Image prompt:"
+Do not output the line "Script line:".
 
-* Each scene is a separate paragraph.
+Do not output the line "Image prompt:".
 
-* There must be exactly one blank line between two scenes.
+Do not wrap sentences in quotation marks.
 
-* No explanations allowed.
+Each scene must be a separate paragraph.
 
-* Return only the pure script content.
+There must be exactly one blank line between scenes.
+
+Do not include any explanations.
+
+Return only the raw script content.
 
 Example format:
+Scene 1 paragraph.
 
-Dialogue scene 1
-
-Dialogue scene 2
-
-Dialogue scene 3
+Scene 2 paragraph.

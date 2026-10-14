@@ -25,7 +25,7 @@ function execAsync(cmd) {
 function buildSceneFilter(duration, aspectRatio = '16:9', fps = 30) {
   const frames     = Math.max(30, Math.round(duration * fps));
   const zoomInc    = (0.06 / frames).toFixed(6);          // smooth zoom rate (1.0 -> 1.06)
-  const fadeDur    = Math.min(0.4, duration / 3).toFixed(3);
+  const fadeDur    = Math.min(0.2, duration / 5).toFixed(3);
   const fadeOutSt  = Math.max(0, duration - parseFloat(fadeDur)).toFixed(3);
 
   const size = aspectRatio === '9:16' ? '1080x1920' : '1920x1080';
@@ -149,7 +149,7 @@ async function renderVideo(timeline, audioPath, subtitlePath, outputPath, aspect
         // Mode: Fixed Background underneath + Transparent PNG scene with zoompan animation
         const frames = Math.max(30, Math.round(item.duration * FPS));
         const zoomInc = (0.06 / frames).toFixed(6);
-        const fadeDur = Math.min(0.4, item.duration / 3).toFixed(3);
+        const fadeDur = Math.min(0.2, item.duration / 5).toFixed(3);
         const fadeOutSt = Math.max(0, item.duration - parseFloat(fadeDur)).toFixed(3);
         const size = aspectRatio === '9:16' ? '1080x1920' : '1920x1080';
         const upscaleW = aspectRatio === '9:16' ? 2160 : 3840;
