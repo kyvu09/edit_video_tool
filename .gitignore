@@ -9,7 +9,8 @@ output/*
 !output/.gitkeep
 
 # Ignore tokens and sensitive config
-config/*
+config/youtube-history.json
+config/youtube-token.json
 *.json.tmp
 
 # Python

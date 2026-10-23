@@ -1,5 +1,5 @@
-RAW URL: https://youtube.com/shorts/cG1rJmD71YQ?si=3IrVWX8nWB02mzOP
-TARGET URL: https://www.youtube.com/watch?v=cG1rJmD71YQ
+RAW URL: https://youtube.com/shorts/1GcUtZiweUM?si=DOuDKDteCMNe_bzX
+TARGET URL: https://www.youtube.com/watch?v=1GcUtZiweUM
 
 PROMPT:
 Hãy xem và đọc toàn bộ nội dung của video từ đầu đến cuối, sau đó **trích xuất toàn bộ nội dung thành văn bản thuần túy**.
