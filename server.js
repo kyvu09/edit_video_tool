@@ -383,6 +383,22 @@ app.post('/api/create-content', async (req, res) => {
   }
 });
 
+// Endpoint to generate a full short-video script from a topic / idea via Gemini
+app.post('/api/generate-script-from-topic', async (req, res) => {
+  try {
+    const { topic } = req.body;
+    if (!topic || topic.trim() === '') {
+      return res.status(400).json({ error: 'Chủ đề / ý tưởng không được để trống.' });
+    }
+
+    const result = await geminiService.generateScriptFromTopic(topic);
+    res.json({ content: result });
+  } catch (error) {
+    console.error('Error in /api/generate-script-from-topic:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- YouTube API Endpoints ---
 app.get('/api/youtube/auth', (req, res) => {
   try {

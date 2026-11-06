@@ -112,6 +112,25 @@
 
                     <div class="ai-assistant-container">
 
+                        <!-- Generate Script From Topic / Idea -->
+                        <div class="section-card">
+                            <div class="section-card-header amber">
+                                <span class="section-card-header-icon"><i data-lucide="lightbulb"></i></span>
+                                <span class="section-card-header-title">Tạo Kịch Bản Từ Chủ Đề / Ý Tưởng</span>
+                            </div>
+                            <div class="section-card-body">
+                                <p class="upload-hint">Chỉ cần nhập chủ đề hoặc ý tưởng ngắn, AI sẽ tự động viết kịch bản Short Video hoàn chỉnh (TikTok/Reels/Shorts, ~1m30s - 2 phút).</p>
+                                <textarea id="topicIdeaInput"
+                                    placeholder="Ví dụ: Tại sao người thành công luôn dậy sớm? / Sự trì hoãn đang giết chết tương lai của bạn..."
+                                    rows="2" class="custom-textarea" style="margin-top: 8px;"></textarea>
+                                <div style="display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap;">
+                                    <button id="btnGenerateFromTopic" type="button" class="btn-submit" style="flex: 1; min-width: 180px; background: linear-gradient(135deg, #d97706, #f59e0b);">
+                                        <i data-lucide="wand-sparkles" class="btn-icon"></i> Tạo Kịch Bản Bằng AI
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Extract from YouTube -->
                         <div class="section-card">
                             <div class="section-card-header violet">
@@ -177,10 +196,10 @@
                             <div class="section-card">
                                 <div class="section-card-header emerald">
                                     <span class="section-card-header-icon"><i data-lucide="pen-line"></i></span>
-                                    <span class="section-card-header-title">Kịch Bản Mới Đã Viết Lại</span>
+                                    <span id="aiCreateContentResultsTitle" class="section-card-header-title">Kịch Bản Mới Đã Viết Lại</span>
                                 </div>
                                 <div class="section-card-body">
-                                    <p class="upload-hint">Kịch bản đã được AI biên soạn lại thành lời kể tiếng Việt liền mạch, hấp dẫn.</p>
+                                    <p id="aiCreateContentResultsHint" class="upload-hint">Kịch bản đã được AI biên soạn lại thành lời kể tiếng Việt liền mạch, hấp dẫn.</p>
                                     <div class="textarea-container" style="margin-top: 8px;">
                                         <textarea id="aiCreatedContentOutput" rows="8" class="custom-textarea" style="padding-right: 90px; font-family: inherit; font-size: 0.95rem; line-height: 1.6;"></textarea>
                                         <button id="btnCopyCreatedContent" type="button" class="btn-copy"><i data-lucide="copy" class="btn-icon"></i> Sao chép</button>

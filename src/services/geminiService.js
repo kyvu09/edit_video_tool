@@ -9,6 +9,8 @@ const PROMPT_SEPARATE_PATH = path.join(PROMPT_DIR, 'prompt-separate-scenes.md');
 const PROMPT_METADATA_PATH = path.join(PROMPT_DIR, 'video-metadata.md');
 const PROMPT_EXTRACT_PATH = path.join(PROMPT_DIR, 'extract-content.md');
 const PROMPT_CONTENT_PATH = path.join(PROMPT_DIR, 'create-content.md');
+const PROMPT_TOPIC_SCRIPT_PATH = path.join(PROMPT_DIR, 'create-contents-short-video.md');
+const TOPIC_PLACEHOLDER = '[NHẬP TIÊU ĐỀ HOẶC Ý TƯỞNG CỦA BẠN VÀO ĐÂY]';
 
 /**
  * Lấy danh sách các model text từ file .env theo thứ tự ưu tiên
@@ -399,4 +401,30 @@ async function createContentFromScript(rawScriptText) {
   return result;
 }
 
-module.exports = { generateScenes, generateVideoMetadata, extractVideoContent, createContentFromScript };
+/**
+ * Tạo kịch bản Short Video hoàn chỉnh chỉ từ một chủ đề / ý tưởng ngắn
+ * sử dụng prompt/create-contents-short-video.md
+ */
+async function generateScriptFromTopic(topic) {
+  if (!topic || topic.trim() === '') {
+    throw new Error('Chủ đề / ý tưởng không được để trống.');
+  }
+
+  let promptTemplate = '';
+  try {
+    promptTemplate = fs.readFileSync(PROMPT_TOPIC_SCRIPT_PATH, 'utf8');
+  } catch (err) {
+    throw new Error(`Failed to read prompt file at ${PROMPT_TOPIC_SCRIPT_PATH}: ${err.message}`);
+  }
+
+  const cleanTopic = topic.trim();
+  const finalPrompt = promptTemplate.includes(TOPIC_PLACEHOLDER)
+    ? promptTemplate.replace(TOPIC_PLACEHOLDER, cleanTopic)
+    : `${promptTemplate.trim()}\n\n${cleanTopic}`;
+
+  console.log('[Gemini Service] Generating short video script from topic...');
+  const result = await callGemini('', finalPrompt, 0.85);
+  return (result || '').trim();
+}
+
+module.exports = { generateScenes, generateVideoMetadata, extractVideoContent, createContentFromScript, generateScriptFromTopic };

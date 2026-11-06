@@ -1216,6 +1216,31 @@ function initAIAssistant() {
     const btnExtractVideo = document.getElementById('btnExtractVideo');
     const txtVideoExtractUrl = document.getElementById('videoExtractUrl');
 
+    // Generate Script From Topic Elements
+    const btnGenerateFromTopic = document.getElementById('btnGenerateFromTopic');
+    const txtTopicIdea = document.getElementById('topicIdeaInput');
+    const aiCreateContentProgressText = document.getElementById('aiCreateContentProgressText');
+    const aiCreateContentResultsTitle = document.getElementById('aiCreateContentResultsTitle');
+    const aiCreateContentResultsHint = document.getElementById('aiCreateContentResultsHint');
+
+    // Cập nhật tiêu đề / mô tả của khung kết quả & progress theo chế độ (rewrite | topic)
+    const setCreateContentMode = (mode) => {
+        const isTopic = mode === 'topic';
+        if (aiCreateContentProgressText) {
+            aiCreateContentProgressText.textContent = isTopic
+                ? 'Đang viết kịch bản Short Video từ chủ đề / ý tưởng bằng Gemini AI...'
+                : 'Đang viết lại nội dung thành kịch bản mới bằng Gemini AI...';
+        }
+        if (aiCreateContentResultsTitle) {
+            aiCreateContentResultsTitle.textContent = isTopic ? 'Kịch Bản Đã Tạo Từ Ý Tưởng' : 'Kịch Bản Mới Đã Viết Lại';
+        }
+        if (aiCreateContentResultsHint) {
+            aiCreateContentResultsHint.textContent = isTopic
+                ? 'Kịch bản Short Video đã được AI viết hoàn chỉnh từ chủ đề / ý tưởng của bạn. Bạn có thể chỉnh sửa trực tiếp bên dưới.'
+                : 'Kịch bản đã được AI biên soạn lại thành lời kể tiếng Việt liền mạch, hấp dẫn.';
+        }
+    };
+
     if (!btnGenerate) return;
 
     if (btnExtractVideo && txtVideoExtractUrl) {
@@ -1262,6 +1287,68 @@ function initAIAssistant() {
     }
 
 
+
+    if (btnGenerateFromTopic && txtTopicIdea) {
+        const runGenerateFromTopic = async () => {
+            const topic = txtTopicIdea.value.trim();
+            if (!topic) {
+                alert('Vui lòng nhập chủ đề hoặc ý tưởng cho kịch bản.');
+                txtTopicIdea.focus();
+                return;
+            }
+
+            const origHtml = btnGenerateFromTopic.innerHTML;
+            btnGenerateFromTopic.disabled = true;
+            btnGenerateFromTopic.innerHTML = '⏳ Đang tạo kịch bản...';
+            setCreateContentMode('topic');
+            if (aiCreateContentProgress) aiCreateContentProgress.style.display = 'block';
+            if (aiCreateContentResults) aiCreateContentResults.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/generate-script-from-topic', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic })
+                });
+
+                if (!response.ok) {
+                    let errMsg = 'Lỗi từ API Gemini';
+                    try {
+                        const errData = await response.json();
+                        errMsg = errData.error || errMsg;
+                    } catch (_) { /* ignore parse error */ }
+                    throw new Error(errMsg);
+                }
+
+                const data = await response.json();
+                if (!data.content) throw new Error('Không có nội dung trả về');
+
+                if (txtCreatedContentOutput) txtCreatedContentOutput.value = data.content;
+
+                if (aiCreateContentProgress) aiCreateContentProgress.style.display = 'none';
+                if (aiCreateContentResults) {
+                    aiCreateContentResults.style.display = 'block';
+                    aiCreateContentResults.scrollIntoView({ behavior: 'smooth' });
+                }
+            } catch (error) {
+                console.error('Generate Script From Topic Error:', error);
+                alert('Không thể tạo kịch bản từ ý tưởng: ' + error.message);
+                if (aiCreateContentProgress) aiCreateContentProgress.style.display = 'none';
+            } finally {
+                btnGenerateFromTopic.disabled = false;
+                btnGenerateFromTopic.innerHTML = origHtml;
+            }
+        };
+
+        btnGenerateFromTopic.addEventListener('click', runGenerateFromTopic);
+        // Ctrl + Enter để tạo nhanh
+        txtTopicIdea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                if (!btnGenerateFromTopic.disabled) runGenerateFromTopic();
+            }
+        });
+    }
 
     if (btnGenerateMetadata) {
         btnGenerateMetadata.addEventListener('click', async () => {
@@ -1343,6 +1430,7 @@ function initAIAssistant() {
             }
 
             btnCreateContent.disabled = true;
+            setCreateContentMode('rewrite');
             if (aiCreateContentProgress) aiCreateContentProgress.style.display = 'block';
             if (aiCreateContentResults) aiCreateContentResults.style.display = 'none';
 
